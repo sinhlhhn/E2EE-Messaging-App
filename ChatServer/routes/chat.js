@@ -201,5 +201,34 @@ router.get("/session", (req, res) => {
   res.json({ salt: session.salt });
 });
 
+// POST /key-backup
+router.post("/key-backup", (req, res) => {
+  const { username, salt, encryptedKey } = req.body;
+
+  const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  db.prepare(`
+    INSERT INTO key_backups (userId, salt, encryptedKey)
+    VALUES (?, ?, ?)
+    ON CONFLICT(userId) DO UPDATE SET salt = excluded.salt, encryptedKey = excluded.encryptedKey
+  `).run(user.id, salt, encryptedKey);
+
+  res.json({ success: true });
+});
+
+// GET /key-backup/:username
+router.get("/key-backup/:username", (req, res) => {
+  const { username } = req.params;
+
+  const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const backup = db.prepare("SELECT salt, encryptedKey FROM key_backups WHERE userId = ?").get(user.id);
+  if (!backup) return res.status(404).json({ error: "Backup not found" });
+
+  res.json(backup);
+});
+
 
 module.exports = router;

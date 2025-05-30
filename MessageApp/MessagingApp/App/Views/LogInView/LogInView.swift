@@ -9,17 +9,21 @@ import SwiftUI
 
 struct LogInView: View {
     @State private var email: String = "A"
-    @State private var password: String = "S"
+    @State private var password: String = "A"
     
     @Bindable var viewModel: LoginViewModel
     
     var body: some View {
         VStack {
             TextField("Email", text: $email)
-//            TextField("Password", text: $password)
+            TextField("Password", text: $password)
             
             Button("Login") {
                 viewModel.logIn(email: email, password: password)
+            }
+            
+            Button("Register") {
+                viewModel.register(email: email, password: password)
             }
         }
         .toolbar(.hidden)
@@ -43,12 +47,22 @@ class LoginViewModel {
     func logIn(email: String, password: String) {
         service.login(data: .init(email: email, password: password))
             .sink { completion in
-                debugPrint("logIn completed")
+                debugPrint("logIn completed \(completion)")
             } receiveValue: { [weak self] isLoggedIn in
                 self?.didLogin(email)
             }
             .store(in: &cancellables)
 
+    }
+    
+    func register(email: String, password: String) {
+        service.register(data: .init(email: email, password: password))
+            .sink { completion in
+                debugPrint("register completed \(completion)")
+            } receiveValue: { [weak self] isLoggedIn in
+                self?.didLogin(email)
+            }
+            .store(in: &cancellables)
     }
 }
 

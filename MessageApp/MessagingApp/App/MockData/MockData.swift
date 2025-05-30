@@ -50,8 +50,12 @@ final class NullSocketService<User, Message>: SocketUseCase {
 }
 
 final class NullAuthenticationService<Authentication>: AuthenticationUseCase {
-    func login(data: Authentication) -> AnyPublisher<Bool, Error> {
-        Empty<Bool, Error>().eraseToAnyPublisher()
+    func login(data: Authentication) -> AnyPublisher<Void, Error> {
+        Empty<Void, Error>().eraseToAnyPublisher()
+    }
+    
+    func register(data: Authentication) -> AnyPublisher<Void, any Error> {
+        Empty<Void, Error>().eraseToAnyPublisher()
     }
 }
 

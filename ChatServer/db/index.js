@@ -63,6 +63,17 @@ db.prepare(`
   )
 `).run();
 
+// restore_keys
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS key_backups (
+    userId INTEGER PRIMARY KEY,
+    salt TEXT NOT NULL,
+    encryptedKey TEXT NOT NULL,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id)
+  )
+`).run();
+
 
     console.log('Database initialized.');
 } else {
