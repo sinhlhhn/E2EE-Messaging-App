@@ -33,7 +33,7 @@ extension Factory {
     func createLogIn(didLogin: @escaping (String) -> Void) -> some View {
         if loginViewModel == nil {
             let secureKeyService = P256SecureKeyService()
-            let authentication = PasswordAuthenticationService(secureKey: secureKeyService, keyStore: keyStore)
+            let authentication = PasswordAuthenticationService(network: network, secureKey: secureKeyService, keyStore: keyStore)
             loginViewModel = LoginViewModel(service: authentication, didLogin: didLogin)
         }
         guard let loginViewModel = loginViewModel else {

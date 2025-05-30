@@ -8,7 +8,112 @@
 import Foundation
 import Combine
 
+struct RestoreKeyResponse: Codable {
+    let salt: String
+    let encryptedKey: String
+}
+
 final class HttpNetwork: NetworkModule {
+    func registerUser(username: String) -> AnyPublisher<Void, Error> {
+        let urlString = "http://localhost:3000/users"
+        
+        let request = buildRequest(url: urlString, method: .post, body: ["username": username])
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .tryMap { data, response in
+                
+                guard let code = (response as? HTTPURLResponse)?.statusCode else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                guard code == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                return Void()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    func sendPublicKey(user: String, publicKey: Data) -> AnyPublisher<Void, Error> {
+        let urlString = "http://localhost:3000/keys"
+        
+        let request = buildRequest(url: urlString, method: .post, body: [
+            "username": user,
+            "publicKey": publicKey.base64EncodedString()
+        ])
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .tryMap { data, response in
+                
+                guard let code = (response as? HTTPURLResponse)?.statusCode else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                guard code == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                return Void()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    func sendBackupKey(user: String, salt: String, encryptedKey: String) -> AnyPublisher<Void, Error> {
+        let urlString = "http://localhost:3000/key-backup"
+        
+        let request = buildRequest(url: urlString, method: .post, body: [
+            "username": user,
+            "salt": salt,
+            "encryptedKey": encryptedKey
+        ])
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .tryMap { data, response in
+                
+                guard let code = (response as? HTTPURLResponse)?.statusCode else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                guard code == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                return Void()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyResponse, Error> {
+        guard let url = URL(string: "http://localhost:3000/key-backup/\(username)") else {
+            return Fail<RestoreKeyResponse, Error>(error: NSError(domain: "Invalid URL", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
+        
+        return URLSession.shared.dataTaskPublisher(for: url)
+            .tryMap { data, response in
+                
+                guard let code = (response as? HTTPURLResponse)?.statusCode else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                guard code == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                let keyResponse = try JSONDecoder().decode(RestoreKeyResponse.self, from: data)
+                return keyResponse
+            }
+            .eraseToAnyPublisher()
+    }
+    
     func fetchUsers() -> AnyPublisher<[User], Error> {
         guard let url = URL(string: "http://localhost:3000/users") else {
             return Fail<[User], Error>(error: NSError(domain: "Invalid URL", code: 0, userInfo: nil)).eraseToAnyPublisher()
