@@ -6,7 +6,7 @@
 //
 
 
-struct PasswordAuthentication {
+struct PasswordAuthentication: Encodable {
     let email: String
     let password: String
 }
