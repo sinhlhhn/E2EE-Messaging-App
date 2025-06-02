@@ -8,11 +8,6 @@
 import Foundation
 import Combine
 
-struct RestoreKeyResponse: Codable {
-    let salt: String
-    let encryptedKey: String
-}
-
 final class HttpNetwork: NetworkModule {
     func registerUser(username: String) -> AnyPublisher<Void, Error> {
         let urlString = "http://localhost:3000/users"

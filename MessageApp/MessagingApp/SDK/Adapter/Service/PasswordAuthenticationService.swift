@@ -15,11 +15,13 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     private let network: NetworkModule
     private let secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>
     private let keyStore: KeyStoreModule
+    private let restoreKey: RestoreKeyModule
     
-    init(network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule) {
+    init(network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule, restoreKey: RestoreKeyModule) {
         self.network = network
         self.secureKey = secureKey
         self.keyStore = keyStore
+        self.restoreKey = restoreKey
     }
     
     func register(data: PasswordAuthentication) -> AnyPublisher<Void, any Error> {
@@ -31,7 +33,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
                     .map { _ in exchangeKey.privateKey }
             }
             .tryMap { key in
-                try self.encryptPrivateKeyForBackup(privateKeyData: key, password: data.password)
+                try self.restoreKey.encryptPrivateKeyForBackup(privateKeyData: key, password: data.password)
             }
             .flatMap { encryptedKey, salt in
                 return self.network.sendBackupKey(user: data.email, salt: salt.base64EncodedString(), encryptedKey: encryptedKey.base64EncodedString())
@@ -46,46 +48,17 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     
     func login(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
         network.fetchRestoreKey(username: data.email)
-            .tryMap { response in
-                try self.restoreKey(response: response, data: data)
+            .map { response in
+                response.toRestoreKeyModel()
             }
-            .map { _ in () }
+            .tryMap { response in
+                try self.restoreKey.restoreKey(response: response, data: data)
+            }
+            .map { key in
+                self.keyStore.store(key: data.email, value: key)
+                return ()
+            }
             .first()
             .eraseToAnyPublisher()
-    }
-    
-    private func restoreKey(response: RestoreKeyResponse, data: PasswordAuthentication) throws {
-        guard let salt = Data(base64Encoded: response.salt),
-        let encryptedKey = Data(base64Encoded: response.encryptedKey) else {
-            throw NSError(domain: "Cannot decode salt", code: 0, userInfo: nil)
-        }
-        let symmetricKey = deriveSymmetricKey(from: data.password, salt: salt)
-        let sealedBox = try AES.GCM.SealedBox(combined: encryptedKey)
-        let decrypted = try AES.GCM.open(sealedBox, using: symmetricKey)
-        let key = try P256.KeyAgreement.PrivateKey(rawRepresentation: decrypted)
-        
-        keyStore.store(key: data.email, value: key.rawRepresentation)
-    }
-    
-    func encryptPrivateKeyForBackup(privateKeyData: Data, password: String) throws -> (encryptedKey: Data, salt: Data) {
-        let salt = Data((0..<32).map { _ in UInt8.random(in: 0...255) })
-        let symmetricKey = deriveSymmetricKey(from: password, salt: salt)
-        
-        let sealedBox = try AES.GCM.seal(privateKeyData, using: symmetricKey)
-        guard let encrypted = sealedBox.combined else {
-            throw NSError(domain: "Cannot encrypt private key", code: 0, userInfo: nil)
-        }
-        return (encryptedKey: encrypted, salt: salt)
-    }
-    
-    func deriveSymmetricKey(from password: String, salt: Data) -> SymmetricKey {
-        let passwordData = password.data(using: .utf8)!
-        let key = HKDF<SHA256>.deriveKey(
-            inputKeyMaterial: SymmetricKey(data: passwordData),
-            salt: salt,
-            info: Data(),
-            outputByteCount: 32
-        )
-        return key
     }
 }
