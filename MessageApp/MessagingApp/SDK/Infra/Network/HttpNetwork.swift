@@ -9,10 +9,10 @@ import Foundation
 import Combine
 
 final class HttpNetwork: NetworkModule {
-    func registerUser(username: String) -> AnyPublisher<Void, Error> {
-        let urlString = "http://localhost:3000/users"
+    func registerUser(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
+        let urlString = "http://localhost:3000/auth/register"
         
-        let request = buildRequest(url: urlString, method: .post, body: ["username": username])
+        let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
         return URLSession.shared.dataTaskPublisher(for: request)
             .tryMap { data, response in
@@ -281,4 +281,25 @@ func buildRequest(url: String, parameters: [String: Any]? = nil, method: HttpMet
     }
 
     return urlRequest
+}
+
+extension Encodable {
+    /// Returns a dictionary version of the Encodable object, if the conversion fails it throws an
+    /// Error
+    public func asDictionary(
+        keyStrategy: JSONEncoder.KeyEncodingStrategy? = nil
+    ) throws -> [String: Any] {
+        let encoder = JSONEncoder()
+        if let keyStrategy = keyStrategy {
+            encoder.keyEncodingStrategy = keyStrategy
+        }
+        guard let json = try JSONSerialization.jsonObject(
+            with: try encoder.encode(self),
+            options: .allowFragments
+        ) as? [String: Any] else {
+            throw NSError(domain: "cannot encode", code: -1)
+        }
+
+        return json
+    }
 }

@@ -25,7 +25,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     }
     
     func register(data: PasswordAuthentication) -> AnyPublisher<Void, any Error> {
-        return network.registerUser(username: data.email)
+        return network.registerUser(data: data)
             .flatMap { _ in
                 let exchangeKey = self.secureKey.generateExchangeKey()
                 self.keyStore.store(key: data.email, value: exchangeKey.privateKey)

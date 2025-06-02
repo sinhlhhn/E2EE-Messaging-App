@@ -9,6 +9,27 @@ function generateSalt(byteLength = 32) {
   return crypto.randomBytes(byteLength).toString("base64");
 }
 
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1]; // Expect "Bearer <token>"
+
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: "Invalid or expired token" });
+    }
+
+    req.user = user; // Example: { sub: 1, username: "alice", iat: ..., exp: ... }
+    console.log("Valid user 👨‍💻");
+    next();
+  });
+}
+
+router.use(authenticateToken);
+
 // GET /users
 router.get("/users", (req, res) => {
   try {
@@ -49,23 +70,6 @@ router.get("/users/chatted-with/:userId", (req, res) => {
     console.error("Error fetching chat users:", err);
     res.status(500).json({ error: "Internal server error" });
   }
-});
-
-// 🔹 Create or log in a user
-router.post('/users', (req, res) => {
-  const { username } = req.body;
-  if (!username) return res.status(400).json({ error: 'Username required' });
-
-  const find = db.prepare('SELECT * FROM users WHERE username = ?');
-  let user = find.get(username);
-
-  if (!user) {
-    const insert = db.prepare('INSERT INTO users (username) VALUES (?)');
-    const info = insert.run(username);
-    user = { id: info.lastInsertRowid, username };
-  }
-
-  res.json(user);
 });
 
 // 🔹 Fetch messages between two users
