@@ -10,6 +10,7 @@ import Foundation
 extension String {
     static let secureKey = "SECURE_KEY"
     static let loggedInUserKey = "LOGGED_IN_USER"
+    static let refreshToken = "REFRESH_TOKEN"
 }
 
 final class UserDefaultsKeyStoreService: KeyStoreModule {
