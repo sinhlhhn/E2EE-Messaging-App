@@ -1,13 +1,15 @@
-
+require('dotenv').config();
 const express = require("express");
 const chatRoutes = require("./routes/chat");
+const authRoutes = require("./routes/authentication");
 const db = require("./db/index");
 
 const app = express();
 app.use(express.json());
 
 // Mount at base path
-app.use("/", chatRoutes);
+app.use("/auth", authRoutes);
+app.use("/api", chatRoutes);
 
 const http = require('http');
 const { Server } = require('socket.io');
