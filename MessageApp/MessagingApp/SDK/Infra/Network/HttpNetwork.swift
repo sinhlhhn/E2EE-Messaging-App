@@ -94,7 +94,7 @@ final class HTTPTokenProvider: TokenProvider {
         guard let refreshToken = refreshToken else {
             return Fail<AuthenticationModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
         }
-        let urlString = "http://localhost:3000/auth/login"
+        let urlString = "http://localhost:3000/auth/token"
         
         let request = buildRequest(url: urlString, method: .post, body: ["token": refreshToken])
         
@@ -137,18 +137,15 @@ final class AuthenticatedHTTPClient: HTTPClient {
 final class RetryAuthenticatedHTTPClient: HTTPClient {
     private let client: HTTPClient
     
-    init(client: AuthenticatedHTTPClient) {
+    init(client: HTTPClient) {
         self.client = client
     }
     
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
-        var retryTimes = 2
+        let retryTimes = 2
         return client.perform(request: request)
             .catch { error in
-                if let error = error as? URLSession.InvalidHTTPResponseError {
-                    return self.performWithRetry(request, retryTimes: retryTimes)
-                }
-                return Fail<(Data, HTTPURLResponse), any Error>(error: error).eraseToAnyPublisher()
+                return self.performWithRetry(request, retryTimes: retryTimes)
             }
             .eraseToAnyPublisher()
     }
@@ -163,10 +160,10 @@ final class RetryAuthenticatedHTTPClient: HTTPClient {
 
 final class HttpAuthenticationNetwork: AuthenticationNetwork {
     
-    private let didGetAccessToken: (String) -> Void
+    private let network: HTTPClient
     
-    init(didGetAccessToken: @escaping (String) -> Void) {
-        self.didGetAccessToken = didGetAccessToken
+    init(network: HTTPClient) {
+        self.network = network
     }
     
     func registerUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, Error> {
@@ -174,15 +171,10 @@ final class HttpAuthenticationNetwork: AuthenticationNetwork {
         
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
-        return URLSession.shared.dataTaskPublisher(for: request)
+        return network.perform(request: request)
             .tryMap { data, response in
                 
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
+                guard response.statusCode == 200 else {
                     let error = URLError(.badServerResponse)
                     throw error
                 }
@@ -199,15 +191,10 @@ final class HttpAuthenticationNetwork: AuthenticationNetwork {
         
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
-        return URLSession.shared.dataTaskPublisher(for: request)
+        return network.perform(request: request)
             .tryMap { data, response in
                 
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
+                guard response.statusCode == 200 else {
                     let error = URLError(.badServerResponse)
                     throw error
                 }
@@ -220,170 +207,108 @@ final class HttpAuthenticationNetwork: AuthenticationNetwork {
     }
 }
 
-final class AuthenticatedNetwork: NetworkModule {
-    private let accessToken: String
-    
-    enum AuthenticationError: Error {
-        case tokenExpired
+struct GenericMapper {
+    static func map<T>(data: Data, response: HTTPURLResponse) throws -> T where T: Decodable {
+        guard response.statusCode == 200 else {
+            let error = URLError(.badServerResponse)
+            throw error
+        }
+        return try JSONDecoder().decode(T.self, from: data)
     }
+}
+
+final class AuthenticatedNetwork: NetworkModule {
+    private let network: HTTPClient
     
-    init(accessToken: String) {
-        self.accessToken = accessToken
+    init(network: HTTPClient) {
+        self.network = network
     }
     
     func sendPublicKey(user: String, publicKey: Data) -> AnyPublisher<Void, Error> {
         let urlString = "http://localhost:3000/keys"
         
-        let request = buildRequest(url: urlString, method: .post, token: accessToken, body: [
+        let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
             "publicKey": publicKey.base64EncodedString()
         ])
         
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                if code == 403 {
-                    throw AuthenticationError.tokenExpired
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                return Void()
+        return network.perform(request: request)
+            .tryMap { data, response -> String in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { _ in Void() }
             .eraseToAnyPublisher()
     }
     
     func sendBackupKey(user: String, salt: String, encryptedKey: String) -> AnyPublisher<Void, Error> {
         let urlString = "http://localhost:3000/key-backup"
         
-        let request = buildRequest(url: urlString, method: .post, token: accessToken, body: [
+        let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
             "salt": salt,
             "encryptedKey": encryptedKey
         ])
         
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                return Void()
+        return network.perform(request: request)
+            .tryMap { data, response -> String in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { _ in Void() }
             .eraseToAnyPublisher()
     }
     
     func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyModel, Error> {
         let urlString = "http://localhost:3000/key-backup/\(username)"
         
-        let request = buildRequest(url: urlString, token: accessToken)
+        let request = buildRequest(url: urlString)
         
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                let keyResponse = try JSONDecoder().decode(RestoreKeyResponse.self, from: data)
-                return keyResponse.toRestoreKeyModel()
+        return network.perform(request: request)
+            .tryMap { data, response -> RestoreKeyResponse in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { $0.toRestoreKeyModel() }
             .eraseToAnyPublisher()
     }
     
     func fetchUsers() -> AnyPublisher<[User], Error> {
         let urlString = "http://localhost:3000/users"
         
-        let request = buildRequest(url: urlString, token: accessToken)
+        let request = buildRequest(url: urlString)
         
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                let list = try JSONDecoder().decode(ListUser.self, from: data)
-                return list.users
+        return network.perform(request: request)
+            .tryMap { data, response -> ListUser in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { $0.users }
             .eraseToAnyPublisher()
     }
     
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error> {
         let urlString = "http://localhost:3000/session"
         
-        let urlRequest = buildRequest(url: urlString, method: .post, token: accessToken, body: [
+        let request = buildRequest(url: urlString, method: .post, body: [
             "senderUsername": sender,
             "receiverUsername": receiver
         ])
         
-        return URLSession.shared.dataTaskPublisher(for: urlRequest)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                let salt = try JSONDecoder().decode(SaltResponse.self, from: data)
-                return salt.salt
+        return network.perform(request: request)
+            .tryMap { data, response -> SaltResponse in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { $0.salt }
             .eraseToAnyPublisher()
     }
     
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error> {
         let urlString = "http://localhost:3000/keys/\(username)"
         
-        let urlRequest = buildRequest(url: urlString, token: accessToken)
+        let request = buildRequest(url: urlString)
         
-        return URLSession.shared.dataTaskPublisher(for: urlRequest)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                let result = try JSONDecoder().decode(PublicKeyResponse.self, from: data)
-                return result.publicKey
+        return network.perform(request: request)
+            .tryMap { data, response -> PublicKeyResponse in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { $0.publicKey }
             .eraseToAnyPublisher()
     }
     
@@ -399,24 +324,13 @@ final class AuthenticatedNetwork: NetworkModule {
             params["limit"] = limit
         }
         
-        let urlRequest = buildRequest(url: urlString, parameters: params, token: accessToken)
+        let request = buildRequest(url: urlString, parameters: params)
         
-        return URLSession.shared.dataTaskPublisher(for: urlRequest)
-            .tryMap { data, response in
-                
-                guard let code = (response as? HTTPURLResponse)?.statusCode else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                guard code == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                
-                let list = try JSONDecoder().decode([MessageResponse].self, from: data)
-                return list.map { Message(messageId: $0.id, content: $0.text, isFromCurrentUser: $0.sender == sender)}
+        return network.perform(request: request)
+            .tryMap { data, response -> [MessageResponse] in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { $0.map { Message(messageId: $0.id, content: $0.text, isFromCurrentUser: $0.sender == sender)} }
             .eraseToAnyPublisher()
     }
 }
@@ -451,7 +365,7 @@ enum HttpMethod: String {
     case delete = "DELETE"
 }
 
-func buildRequest(url: String, parameters: [String: Any]? = nil, method: HttpMethod = .get, headers: [String: String]? = nil, token: String? = nil, body: [String: Any]? = nil) -> URLRequest {
+func buildRequest(url: String, parameters: [String: Any]? = nil, method: HttpMethod = .get, headers: [String: String]? = nil, body: [String: Any]? = nil) -> URLRequest {
     var components = URLComponents(string: url)
 
     // URLComponents(string: url) can't init with url params contains double quote
@@ -473,10 +387,6 @@ func buildRequest(url: String, parameters: [String: Any]? = nil, method: HttpMet
 
     for (headerField, value) in headers ?? [:] {
         urlRequest.addValue(value, forHTTPHeaderField: headerField)
-    }
-
-    if let token = token {
-        urlRequest.setBearerToken(token)
     }
 
     if let body = body, let data = try? JSONSerialization.data(withJSONObject: body) {

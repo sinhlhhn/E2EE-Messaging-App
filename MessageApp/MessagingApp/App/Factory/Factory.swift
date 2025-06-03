@@ -6,10 +6,17 @@
 import SwiftUI
 
 final class Factory {
-    private var network: AuthenticatedNetwork?
+    private lazy var client: HTTPClient = URLSession.shared
+    private lazy var retryAuthenticatedClient: HTTPClient = RetryAuthenticatedHTTPClient(client: client)
+    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore)
+    private lazy var authenticatedClient: HTTPClient = AuthenticatedHTTPClient(client: client, tokenProvider: tokenProvider)
+    
+    private lazy var network: AuthenticatedNetwork = AuthenticatedNetwork(network: authenticatedClient)
+    
+    private lazy var authenticationNetwork = HttpAuthenticationNetwork(network: client)
     private var conversationViewModel: ConversationViewModel?
     
-    let keyStore = UserDefaultsKeyStoreService()
+    private lazy var keyStore = UserDefaultsKeyStoreService()
     private var chatViewModel: ChatViewModel?
     
     
@@ -32,12 +39,9 @@ extension Factory {
     
     func createLogIn(didLogin: @escaping (String) -> Void) -> some View {
         if loginViewModel == nil {
-            let authenticatedNetwork = HttpAuthenticationNetwork { [weak self] accessToken in
-                self?.createAuthenticatedNetwork(accessToken: accessToken)
-            }
             let secureKeyService = P256SecureKeyService()
             let restoreKey = RemoteRestoreKeyModule()
-            let authentication = PasswordAuthenticationService(authenticatedNetwork: authenticatedNetwork, network: getAuthenticatedNetwork(), secureKey: secureKeyService, keyStore: keyStore, restoreKey: restoreKey)
+            let authentication = PasswordAuthenticationService(authenticatedNetwork: authenticationNetwork, network: network, secureKey: secureKeyService, keyStore: keyStore, restoreKey: restoreKey)
             loginViewModel = LoginViewModel(service: authentication, didLogin: didLogin)
         }
         guard let loginViewModel = loginViewModel else {
@@ -47,21 +51,9 @@ extension Factory {
         return LogInView(viewModel: loginViewModel)
     }
     
-    private func createAuthenticatedNetwork(accessToken: String) {
-        network = AuthenticatedNetwork(accessToken: accessToken)
-    }
-    
-    private func getAuthenticatedNetwork() -> AuthenticatedNetwork {
-        guard let network = network else {
-            fatalError("network need to be set before use")
-        }
-        
-        return network
-    }
-    
     func createConversation(sender: String, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) -> some View {
         if conversationViewModel == nil {
-            let userService = RemoteUserService(network: getAuthenticatedNetwork())
+            let userService = RemoteUserService(network: network)
             conversationViewModel = ConversationViewModel(sender: sender, service: userService, didTapItem: didTapItem, didTapLogOut: didTapLogOut)
         }
         
@@ -79,7 +71,7 @@ extension Factory {
             let encryptService = AESEncryptService()
             let decryptService = AESDecryption()
             let secureKeyService = P256SecureKeyService()
-            let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: getAuthenticatedNetwork())
+            let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: network)
             let socketService = LocalSocketService(encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
             chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, messageService: messageService, didTapBack: didTapBack)
         }

@@ -92,10 +92,4 @@ db.prepare(`
     console.log('Database already exists. Skipping initialization.');
 }
 
-const insertUser = db.prepare("INSERT OR IGNORE INTO users (username) VALUES (?)");
-
-// Default users
-insertUser.run("S");
-insertUser.run("A");
-
 module.exports = db;

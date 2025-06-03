@@ -5,8 +5,9 @@ const db = require("../db/index");
 const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
 
-router.post("/auth/register", async (req, res) => {
+router.post("/register", async (req, res) => {
   const { username, password } = req.body;
+  console.log("register: ", username, password);
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
   const existing = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
@@ -16,12 +17,12 @@ router.post("/auth/register", async (req, res) => {
   const insert = db.prepare("INSERT INTO users (username, passwordHash) VALUES (?, ?)").run(username, passwordHash);
   const userId = insert.lastInsertRowid;
 
-  const { accessToken, refreshToken } = generateTokenPair(userId, user.username);
+  const { accessToken, refreshToken } = generateTokenPair(userId, username);
 
   res.json({ accessToken, refreshToken });
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/login", async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
@@ -36,7 +37,7 @@ router.post("/auth/login", async (req, res) => {
   res.json({ accessToken, refreshToken });
 });
 
-router.post("/auth/token", (req, res) => {
+router.post("/token", (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: "Missing refresh token" });
 
@@ -60,10 +61,10 @@ router.post("/auth/token", (req, res) => {
 
 function generateTokenPair(userId, username) {
   const accessToken = jwt.sign({ sub: userId, username }, process.env.JWT_SECRET, { expiresIn: "15m" });
-  const expiresIn = "7d";
-  const refreshToken = jwt.sign({ sub: user.id, username }, process.env.JWT_SECRET, { expiresIn });
+  const refreshToken = jwt.sign({ sub: userId, username }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-  db.prepare("INSERT INTO refresh_tokens (userId, token, expiresAt) VALUES (?, ?, datetime('now', ?))")
+  // Insert with a valid interval expression
+  db.prepare("INSERT INTO refresh_tokens (userId, token, expiresAt) VALUES (?, ?, datetime('now', '+7 days'))")
     .run(userId, refreshToken);
 
   console.log("access token: ", accessToken);
@@ -72,7 +73,7 @@ function generateTokenPair(userId, username) {
   return { accessToken, refreshToken };
 }
 
-router.post("/auth/logout", (req, res) => {
+router.post("/logout", (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: "Missing token" });
 
@@ -80,3 +81,5 @@ router.post("/auth/logout", (req, res) => {
   res.json({ success: true });
   console.log("Log out 🧑‍🚀");
 });
+
+module.exports = router;

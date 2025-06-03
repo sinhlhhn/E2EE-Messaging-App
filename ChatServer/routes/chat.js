@@ -10,6 +10,7 @@ function generateSalt(byteLength = 32) {
 }
 
 function authenticateToken(req, res, next) {
+  console.log("Checking authentication...");
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1]; // Expect "Bearer <token>"
 
