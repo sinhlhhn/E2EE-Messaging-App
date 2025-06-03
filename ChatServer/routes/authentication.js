@@ -17,7 +17,7 @@ router.post("/auth/register", async (req, res) => {
   const userId = insert.lastInsertRowid;
 
   const { accessToken, refreshToken } = generateTokenPair(userId, user.username);
-  
+
   res.json({ accessToken, refreshToken });
 });
 
@@ -45,8 +45,13 @@ router.post("/auth/token", (req, res) => {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    const accessToken = jwt.sign({ sub: payload.sub, username: payload.username }, process.env.JWT_SECRET, { expiresIn: "15m" });
-    res.json({ accessToken });
+
+    db.prepare("DELETE FROM refresh_tokens WHERE token = ?").run(token);
+
+    const { accessToken, refreshToken } = generateTokenPair(payload.sub, payload.username);
+
+    res.json({ accessToken, refreshToken });
+
     console.log("Got new access token: ", accessToken);
   } catch (err) {
     res.status(403).json({ error: "Token expired or invalid" });

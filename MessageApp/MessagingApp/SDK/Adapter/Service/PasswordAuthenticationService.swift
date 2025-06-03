@@ -12,12 +12,14 @@ import CryptoKit
 
 final class PasswordAuthenticationService: AuthenticationUseCase {
     
+    private let authenticatedNetwork: AuthenticationNetwork
     private let network: NetworkModule
     private let secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>
     private let keyStore: KeyStoreModule
     private let restoreKey: RestoreKeyModule
     
-    init(network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule, restoreKey: RestoreKeyModule) {
+    init(authenticatedNetwork: AuthenticationNetwork, network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule, restoreKey: RestoreKeyModule) {
+        self.authenticatedNetwork = authenticatedNetwork
         self.network = network
         self.secureKey = secureKey
         self.keyStore = keyStore
@@ -25,7 +27,10 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     }
     
     func register(data: PasswordAuthentication) -> AnyPublisher<Void, any Error> {
-        return network.registerUser(data: data)
+        return authenticatedNetwork.registerUser(data: data)
+            .map { data in
+                self.keyStore.store(key: .refreshToken, value: data.refreshToken)
+            }
             .flatMap { _ in
                 let exchangeKey = self.secureKey.generateExchangeKey()
                 self.keyStore.store(key: data.email, value: exchangeKey.privateKey)
@@ -47,9 +52,12 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     }
     
     func login(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
-        network.fetchRestoreKey(username: data.email)
-            .map { response in
-                response.toRestoreKeyModel()
+        authenticatedNetwork.logInUser(data: data)
+            .map { data in
+                self.keyStore.store(key: .refreshToken, value: data.refreshToken)
+            }
+            .flatMap { _ in
+                self.network.fetchRestoreKey(username: data.email)
             }
             .tryMap { response in
                 try self.restoreKey.restoreKey(response: response, data: data)

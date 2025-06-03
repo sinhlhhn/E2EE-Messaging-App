@@ -8,8 +8,168 @@
 import Foundation
 import Combine
 
-final class HttpNetwork: NetworkModule {
-    func registerUser(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
+struct AuthenticationResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
+}
+
+protocol HTTPClient {
+    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), Error>
+}
+
+extension URLSession: HTTPClient {
+    struct InvalidHTTPResponseError: Error {}
+    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), Error> {
+        return dataTaskPublisher(for: request)
+            .tryMap { result in
+                guard let httpResponse = result.response as? HTTPURLResponse else {
+                    throw InvalidHTTPResponseError()
+                }
+                return (result.data, httpResponse)
+            }
+            .eraseToAnyPublisher()
+    }
+}
+
+protocol TokenProvider {
+    func fetchToken() -> AnyPublisher<String, Error>
+    func refreshToken() -> AnyPublisher<String, Error>
+}
+
+final class HTTPTokenProvider: TokenProvider {
+    private let network: HTTPClient
+    private let keyStore: KeyStoreModule
+    
+    private var currentToken: String?
+    private var refreshSubject: PassthroughSubject<String, Error>?
+    private let lock = NSLock()
+    private var cancellables = Set<AnyCancellable>()
+    
+    init(network: HTTPClient, keyStore: KeyStoreModule) {
+        self.network = network
+        self.keyStore = keyStore
+    }
+    
+    func fetchToken() -> AnyPublisher<String, any Error> {
+        if let currentToken = currentToken {
+            return Just<String>(currentToken).setFailureType(to: Error.self).eraseToAnyPublisher()
+        }
+        return refreshToken()
+    }
+    
+    func refreshToken() -> AnyPublisher<String, Error> {
+        lock.lock()
+        defer { lock.unlock() }
+        
+        // If refresh already in progress, return same publisher
+        if let subject = refreshSubject {
+            return subject.eraseToAnyPublisher()
+        }
+        
+        let subject = PassthroughSubject<String, Error>()
+        refreshSubject = subject
+        
+        let refreshToken: String? = keyStore.retrieve(key: .refreshToken)
+        performRefresh(refreshToken: refreshToken)
+            .sink(receiveCompletion: { [weak self] completion in
+                self?.lock.lock()
+                defer { self?.lock.unlock() }
+                
+                self?.refreshSubject = nil
+                if case .failure(let error) = completion {
+                    subject.send(completion: .failure(error))
+                }
+            }, receiveValue: { [weak self] response in
+                self?.keyStore.store(key: .refreshToken, value: response.refreshToken)
+                self?.currentToken = response.accessToken
+                subject.send(response.accessToken)
+                subject.send(completion: .finished)
+            })
+            .store(in: &cancellables)
+        
+        return subject.eraseToAnyPublisher()
+    }
+    
+    private func performRefresh(refreshToken: String?) -> AnyPublisher<AuthenticationModel, Error> {
+        guard let refreshToken = refreshToken else {
+            return Fail<AuthenticationModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
+        }
+        let urlString = "http://localhost:3000/auth/login"
+        
+        let request = buildRequest(url: urlString, method: .post, body: ["token": refreshToken])
+        
+        return network.perform(request: request)
+            .tryMap { data, response in
+                guard response.statusCode == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
+            }
+            .first()
+            .eraseToAnyPublisher()
+    }
+}
+
+final class AuthenticatedHTTPClient: HTTPClient {
+    private let client: HTTPClient
+    private let tokenProvider: TokenProvider
+    
+    init(client: HTTPClient, tokenProvider: TokenProvider) {
+        self.client = client
+        self.tokenProvider = tokenProvider
+    }
+    
+    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        var request = request
+        return tokenProvider.fetchToken()
+            .flatMap { token in
+                request.setBearerToken(token)
+                return self.client.perform(request: request)
+            }
+            .eraseToAnyPublisher()
+    }
+}
+
+final class RetryAuthenticatedHTTPClient: HTTPClient {
+    private let client: HTTPClient
+    
+    init(client: AuthenticatedHTTPClient) {
+        self.client = client
+    }
+    
+    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        var retryTimes = 2
+        return client.perform(request: request)
+            .catch { error in
+                if let error = error as? URLSession.InvalidHTTPResponseError {
+                    return self.performWithRetry(request, retryTimes: retryTimes)
+                }
+                return Fail<(Data, HTTPURLResponse), any Error>(error: error).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    private func performWithRetry(_ request: URLRequest, retryTimes: Int) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        if retryTimes == 0 {
+            return Fail<(Data, HTTPURLResponse), any Error>(error: NSError(domain: "", code: 1)).eraseToAnyPublisher() // should log out
+        }
+        return performWithRetry(request, retryTimes: retryTimes - 1)
+    }
+}
+
+final class HttpAuthenticationNetwork: AuthenticationNetwork {
+    
+    private let didGetAccessToken: (String) -> Void
+    
+    init(didGetAccessToken: @escaping (String) -> Void) {
+        self.didGetAccessToken = didGetAccessToken
+    }
+    
+    func registerUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, Error> {
         let urlString = "http://localhost:3000/auth/register"
         
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
@@ -27,15 +187,54 @@ final class HttpNetwork: NetworkModule {
                     throw error
                 }
                 
-                return Void()
+                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
             }
             .eraseToAnyPublisher()
+    }
+    
+    func logInUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, any Error> {
+        let urlString = "http://localhost:3000/auth/login"
+        
+        let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
+            .tryMap { data, response in
+                
+                guard let code = (response as? HTTPURLResponse)?.statusCode else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                guard code == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
+            }
+            .eraseToAnyPublisher()
+    }
+}
+
+final class AuthenticatedNetwork: NetworkModule {
+    private let accessToken: String
+    
+    enum AuthenticationError: Error {
+        case tokenExpired
+    }
+    
+    init(accessToken: String) {
+        self.accessToken = accessToken
     }
     
     func sendPublicKey(user: String, publicKey: Data) -> AnyPublisher<Void, Error> {
         let urlString = "http://localhost:3000/keys"
         
-        let request = buildRequest(url: urlString, method: .post, body: [
+        let request = buildRequest(url: urlString, method: .post, token: accessToken, body: [
             "username": user,
             "publicKey": publicKey.base64EncodedString()
         ])
@@ -46,6 +245,10 @@ final class HttpNetwork: NetworkModule {
                 guard let code = (response as? HTTPURLResponse)?.statusCode else {
                     let error = URLError(.badServerResponse)
                     throw error
+                }
+                
+                if code == 403 {
+                    throw AuthenticationError.tokenExpired
                 }
                 
                 guard code == 200 else {
@@ -61,7 +264,7 @@ final class HttpNetwork: NetworkModule {
     func sendBackupKey(user: String, salt: String, encryptedKey: String) -> AnyPublisher<Void, Error> {
         let urlString = "http://localhost:3000/key-backup"
         
-        let request = buildRequest(url: urlString, method: .post, body: [
+        let request = buildRequest(url: urlString, method: .post, token: accessToken, body: [
             "username": user,
             "salt": salt,
             "encryptedKey": encryptedKey
@@ -85,12 +288,12 @@ final class HttpNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
     
-    func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyResponse, Error> {
-        guard let url = URL(string: "http://localhost:3000/key-backup/\(username)") else {
-            return Fail<RestoreKeyResponse, Error>(error: NSError(domain: "Invalid URL", code: 0, userInfo: nil)).eraseToAnyPublisher()
-        }
+    func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyModel, Error> {
+        let urlString = "http://localhost:3000/key-backup/\(username)"
         
-        return URLSession.shared.dataTaskPublisher(for: url)
+        let request = buildRequest(url: urlString, token: accessToken)
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
             .tryMap { data, response in
                 
                 guard let code = (response as? HTTPURLResponse)?.statusCode else {
@@ -104,17 +307,17 @@ final class HttpNetwork: NetworkModule {
                 }
                 
                 let keyResponse = try JSONDecoder().decode(RestoreKeyResponse.self, from: data)
-                return keyResponse
+                return keyResponse.toRestoreKeyModel()
             }
             .eraseToAnyPublisher()
     }
     
     func fetchUsers() -> AnyPublisher<[User], Error> {
-        guard let url = URL(string: "http://localhost:3000/users") else {
-            return Fail<[User], Error>(error: NSError(domain: "Invalid URL", code: 0, userInfo: nil)).eraseToAnyPublisher()
-        }
+        let urlString = "http://localhost:3000/users"
         
-        return URLSession.shared.dataTaskPublisher(for: url)
+        let request = buildRequest(url: urlString, token: accessToken)
+        
+        return URLSession.shared.dataTaskPublisher(for: request)
             .tryMap { data, response in
                 
                 guard let code = (response as? HTTPURLResponse)?.statusCode else {
@@ -136,7 +339,7 @@ final class HttpNetwork: NetworkModule {
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error> {
         let urlString = "http://localhost:3000/session"
         
-        let urlRequest = buildRequest(url: urlString, method: .post, body: [
+        let urlRequest = buildRequest(url: urlString, method: .post, token: accessToken, body: [
             "senderUsername": sender,
             "receiverUsername": receiver
         ])
@@ -163,7 +366,7 @@ final class HttpNetwork: NetworkModule {
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error> {
         let urlString = "http://localhost:3000/keys/\(username)"
         
-        let urlRequest = buildRequest(url: urlString)
+        let urlRequest = buildRequest(url: urlString, token: accessToken)
         
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
             .tryMap { data, response in
@@ -196,7 +399,7 @@ final class HttpNetwork: NetworkModule {
             params["limit"] = limit
         }
         
-        let urlRequest = buildRequest(url: urlString, parameters: params)
+        let urlRequest = buildRequest(url: urlString, parameters: params, token: accessToken)
         
         return URLSession.shared.dataTaskPublisher(for: urlRequest)
             .tryMap { data, response in
