@@ -56,6 +56,7 @@ router.post("/token", (req, res) => {
     console.log("Got new access token: ", accessToken);
   } catch (err) {
     res.status(403).json({ error: "Token expired or invalid" });
+    console.log(err);
   }
 });
 

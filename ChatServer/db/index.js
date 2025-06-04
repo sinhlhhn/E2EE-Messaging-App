@@ -1,4 +1,4 @@
-const fs = require('fs');
+// const fs = require('fs');
 const path = require('path');
 const Database = require('better-sqlite3');
 
@@ -12,15 +12,15 @@ const DB_PATH = path.resolve(__dirname, 'local.db');
 // });
 
 // Check if the database file exists
-const isNewDatabase = !fs.existsSync(DB_PATH);
+// const isNewDatabase = !fs.existsSync(DB_PATH);
 
 // Open the database (creates it if it doesn't exist)
 const db = new Database(DB_PATH);
 
-if (true) {
-    console.log('Creating new database and initializing tables...');
-    // user
-    db.prepare(`
+// if (true) {
+console.log('Creating new database and initializing tables...');
+// user
+db.prepare(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
@@ -28,8 +28,8 @@ if (true) {
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `).run();
-    // message
-    db.prepare(`
+// message
+db.prepare(`
   CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     senderId INTEGER NOT NULL,
@@ -42,8 +42,8 @@ if (true) {
 `).run();
 
 // db.prepare(`DROP TABLE IF EXISTS secure_keys`).run();
-    // secure_keys
-    db.prepare(`
+// secure_keys
+db.prepare(`
   CREATE TABLE IF NOT EXISTS secure_keys (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     ownerId INTEGER UNIQUE NOT NULL,
@@ -87,9 +87,9 @@ db.prepare(`
   )
 `).run();
 
-    console.log('Database initialized.');
-} else {
-    console.log('Database already exists. Skipping initialization.');
-}
+console.log('Database initialized.');
+// } else {
+//     console.log('Database already exists. Skipping initialization.');
+// }
 
 module.exports = db;
