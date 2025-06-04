@@ -40,14 +40,21 @@ final class HTTPTokenProvider: TokenProvider {
     private let network: HTTPClient
     private let keyStore: KeyStoreModule
     
+    private enum AuthState {
+        case notAuthenticated
+        case authenticated
+    }
+    
+    private let needAuth: () -> Void
     private var currentToken: String?
     private var refreshSubject: PassthroughSubject<String, Error>?
     private let lock = NSLock()
     private var cancellables = Set<AnyCancellable>()
     
-    init(network: HTTPClient, keyStore: KeyStoreModule) {
+    init(network: HTTPClient, keyStore: KeyStoreModule, needAuth: @escaping () -> Void) {
         self.network = network
         self.keyStore = keyStore
+        self.needAuth = needAuth
     }
     
     func fetchToken() -> AnyPublisher<String, any Error> {
@@ -77,7 +84,8 @@ final class HTTPTokenProvider: TokenProvider {
                 
                 self?.refreshSubject = nil
                 if case .failure(let error) = completion {
-                    subject.send(completion: .failure(error))
+                    subject.send(completion: .finished)
+                    self?.needAuth()
                 }
             }, receiveValue: { [weak self] response in
                 self?.keyStore.store(key: .refreshToken, value: response.refreshToken)
@@ -124,6 +132,27 @@ final class AuthenticatedHTTPClient: HTTPClient {
     }
     
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        return performRequestWithToken(request: request)
+            .flatMap{ (data, response) in
+                if response.statusCode == 401 {
+                    return self.performRequestWithRefreshToken(request: request)
+                }
+                return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    private func performRequestWithRefreshToken(request: URLRequest)  -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        var request = request
+        return tokenProvider.refreshToken()
+            .flatMap { token in
+                request.setBearerToken(token)
+                return self.client.perform(request: request)
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    private func performRequestWithToken(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         var request = request
         return tokenProvider.fetchToken()
             .flatMap { token in
@@ -144,8 +173,11 @@ final class RetryAuthenticatedHTTPClient: HTTPClient {
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         let retryTimes = 2
         return client.perform(request: request)
-            .catch { error in
-                return self.performWithRetry(request, retryTimes: retryTimes)
+            .flatMap { (data, response) in
+                if response.statusCode != 200 {
+                    return self.performWithRetry(request, retryTimes: retryTimes)
+                }
+                return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
     }

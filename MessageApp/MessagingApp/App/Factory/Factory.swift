@@ -8,7 +8,7 @@ import SwiftUI
 final class Factory {
     private lazy var client: HTTPClient = URLSession.shared
     private lazy var retryAuthenticatedClient: HTTPClient = RetryAuthenticatedHTTPClient(client: client)
-    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore)
+    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore, needAuth: {})
     private lazy var authenticatedClient: HTTPClient = AuthenticatedHTTPClient(client: client, tokenProvider: tokenProvider)
     
     private lazy var network: AuthenticatedNetwork = AuthenticatedNetwork(network: authenticatedClient)
