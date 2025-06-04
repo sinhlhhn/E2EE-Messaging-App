@@ -1,3 +1,4 @@
+const jwt = require("jsonwebtoken");
 const express = require("express");
 const router = express.Router();
 const db = require("../db/index");
@@ -124,7 +125,7 @@ router.post("/keys", (req, res) => {
     ON CONFLICT(ownerId) DO UPDATE SET encryptKey = excluded.encryptKey
   `).run(user.id, publicKey);
 
-  const result = res.json({ success: true });
+  res.json({ success: true });
   // console.log('POST key: ', result);
 });
 
