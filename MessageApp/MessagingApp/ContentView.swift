@@ -15,9 +15,9 @@ struct ContentView: View {
     var body: some View {
         NavigationStack(path: $flow.path) {
             factory.createRootView(didLogin: {
-                flow.start(type: .pushTo(ConversationDestination.logIn))
+                flow.start(type: .root(ConversationDestination.logIn))
             }, didGoToConversation: { sender in
-                flow.start(type: .pushTo(ConversationDestination.conversation(sender: sender)))
+                flow.start(type: .root(ConversationDestination.conversation(sender: sender)))
             })
                 
             .navigationDestination(for: ConversationDestination.self) { destination in
@@ -30,7 +30,7 @@ struct ContentView: View {
                     factory.createConversation(sender: sender, didTapItem: { sender, receiver in
                         flow.start(type: .pushTo(ConversationDestination.chat(sender: sender, receiver: receiver)))
                     }, didTapLogOut: {
-                        flow.start(type: .popToRoot)
+                        flow.start(type: .root(ConversationDestination.logIn))
                     })
                 case .chat(let sender, let receiver):
                     factory.createChat(sender: sender, receiver: receiver, didTapBack: {

@@ -15,13 +15,13 @@ enum ConversationDestination: Hashable {
 
 class Flow: ObservableObject {
     @Published var path: NavigationPath = .init()
-    @Published var type: NavigationType = .root
+    @Published var type: NavigationType = .root("")
     
     enum NavigationType {
         case pushTo(any Hashable)
         case popBack
         case popToRoot
-        case root
+        case root(any Hashable)
     }
     
     func start(type: NavigationType) {
@@ -31,8 +31,11 @@ class Flow: ObservableObject {
                 self.path.append(destination)
             case .popBack:
                 self.path.removeLast()
-            case .popToRoot, .root:
+            case .popToRoot:
                 self.path.removeLast(self.path.count)
+            case .root(let destination):
+                self.path = NavigationPath()
+                self.path.append(destination)
             }
         }
     }

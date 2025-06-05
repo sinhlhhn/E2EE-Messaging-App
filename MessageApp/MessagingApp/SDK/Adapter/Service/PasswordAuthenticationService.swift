@@ -43,10 +43,9 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
             .flatMap { encryptedKey, salt in
                 return self.network.sendBackupKey(user: data.email, salt: salt.base64EncodedString(), encryptedKey: encryptedKey.base64EncodedString())
             }
-            .map { _ in
-                self.keyStore.store(key: .loggedInUserKey, value: data.email)
-                return ()
-            }
+            .handleEvents(receiveOutput: { [weak self] _ in
+                self?.keyStore.store(key: .userName, value: data.email)
+            })
             .first()
             .eraseToAnyPublisher()
     }
@@ -64,6 +63,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
             }
             .map { key in
                 self.keyStore.store(key: data.email, value: key)
+                self.keyStore.store(key: .userName, value: data.email)
                 return ()
             }
             .first()

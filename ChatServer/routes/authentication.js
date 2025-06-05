@@ -6,8 +6,8 @@ const bcrypt = require('bcrypt');
 const SALT_ROUNDS = 10;
 
 router.post("/register", async (req, res) => {
+  console.log("CALL /register: ");
   const { username, password } = req.body;
-  console.log("register: ", username, password);
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
   const existing = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
@@ -23,6 +23,7 @@ router.post("/register", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
+  console.log("CALL /login: ");
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: "Username and password required" });
 
@@ -38,6 +39,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/token", (req, res) => {
+  console.log("CALL /token: ");
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: "Missing refresh token" });
 
@@ -68,19 +70,7 @@ function generateTokenPair(userId, username) {
   db.prepare("INSERT INTO refresh_tokens (userId, token, expiresAt) VALUES (?, ?, datetime('now', '+7 days'))")
     .run(userId, refreshToken);
 
-  console.log("access token: ", accessToken);
-  console.log("refresh token: ", refreshToken);
-
   return { accessToken, refreshToken };
 }
-
-router.post("/logout", (req, res) => {
-  const { token } = req.body;
-  if (!token) return res.status(400).json({ error: "Missing token" });
-
-  db.prepare("DELETE FROM refresh_tokens WHERE token = ?").run(token);
-  res.json({ success: true });
-  console.log("Log out 🧑‍🚀");
-});
 
 module.exports = router;

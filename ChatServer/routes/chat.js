@@ -34,6 +34,7 @@ router.use(authenticateToken);
 
 // GET /users
 router.get("/users", (req, res) => {
+  console.log("CALL /users: ");
   try {
     const stmt = db.prepare("SELECT id, username FROM users");
     const users = stmt.all();
@@ -47,6 +48,7 @@ router.get("/users", (req, res) => {
 
 // GET /users/chatted-with/:userId
 router.get("/users/chatted-with/:userId", (req, res) => {
+  console.log("CALL /users/chatted-with/:userId: ");
   const userId = req.params.userId;
 
   try {
@@ -76,6 +78,7 @@ router.get("/users/chatted-with/:userId", (req, res) => {
 
 // 🔹 Fetch messages between two users
 router.get('/messages/:userA/:userB', (req, res) => {
+  console.log("CALL /messages/:userA/:userB: ");
   const { userA, userB } = req.params;
   console.log('GET query: ', req.query);
   const before = parseInt(req.query.before) || Number.MAX_SAFE_INTEGER;
@@ -107,6 +110,7 @@ router.get('/messages/:userA/:userB', (req, res) => {
 
 // POST /keys
 router.post("/keys", (req, res) => {
+  console.log("CALL /keys: ");
   const { username, publicKey } = req.body;
 
   if (!username || !publicKey) {
@@ -131,6 +135,7 @@ router.post("/keys", (req, res) => {
 
 // GET /keys/:username
 router.get("/keys/:username", (req, res) => {
+  console.log("CALL /keys/:username: ");
   const { username } = req.params;
 
   const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
@@ -148,6 +153,7 @@ router.get("/keys/:username", (req, res) => {
 
 // POST /session
 router.post("/session", (req, res) => {
+  console.log("CALL /session: ");
   const { senderUsername, receiverUsername } = req.body;
 
   const sender = db.prepare("SELECT id FROM users WHERE username = ?").get(senderUsername);
@@ -185,6 +191,7 @@ router.post("/session", (req, res) => {
 
 // GET /session?sender=S&receiver=A
 router.get("/session", (req, res) => {
+  console.log("CALL /session: ");
   const { sender, receiver } = req.query;
 
   const s = db.prepare("SELECT id FROM users WHERE username = ?").get(sender);
@@ -209,6 +216,7 @@ router.get("/session", (req, res) => {
 
 // POST /key-backup
 router.post("/key-backup", (req, res) => {
+  console.log("CALL /key-backup: ");
   const { username, salt, encryptedKey } = req.body;
 
   const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
@@ -225,6 +233,7 @@ router.post("/key-backup", (req, res) => {
 
 // GET /key-backup/:username
 router.get("/key-backup/:username", (req, res) => {
+  console.log("CALL /key-backup/:username: ");
   const { username } = req.params;
 
   const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
@@ -234,6 +243,16 @@ router.get("/key-backup/:username", (req, res) => {
   if (!backup) return res.status(404).json({ error: "Backup not found" });
 
   res.json(backup);
+});
+
+router.post("/logout", (req, res) => {
+  console.log("CALL /logout: ");
+  const {username} = req.body;
+
+  const user = db.prepare("SELECT id FROM users WHERE username = ?").get(username);
+  db.prepare("DELETE FROM refresh_tokens WHERE userId = ?").run(user.id);
+  res.json({ success: true });
+  console.log("Log out 🧑‍🚀");
 });
 
 

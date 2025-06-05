@@ -28,8 +28,8 @@ extension Factory {
     func createRootView(didLogin: @escaping () -> Void, didGoToConversation: @escaping (String) -> Void) -> some View {
         Text("Loading")
             .onAppear {
-                let user: String? = self.keyStore.retrieve(key: .loggedInUserKey)
-                if let user = user {
+                let isAuthent: String? = self.keyStore.retrieve(key: .refreshToken)
+                if let _ = isAuthent, let user: String = self.keyStore.retrieve(key: .userName) {
                     didGoToConversation(user)
                 } else {
                     didLogin()
@@ -54,7 +54,8 @@ extension Factory {
     func createConversation(sender: String, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) -> some View {
         if conversationViewModel == nil {
             let userService = RemoteUserService(network: network)
-            conversationViewModel = ConversationViewModel(sender: sender, service: userService, didTapItem: didTapItem, didTapLogOut: didTapLogOut)
+            let logOut = RemoteLogOutUseCase(network: network, keyStore: keyStore)
+            conversationViewModel = ConversationViewModel(sender: sender, logOutUseCase: logOut, service: userService, didTapItem: didTapItem, didTapLogOut: didTapLogOut)
         }
         
         guard let conversationViewModel = conversationViewModel else {
