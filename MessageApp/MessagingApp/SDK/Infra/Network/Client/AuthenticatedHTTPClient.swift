@@ -18,6 +18,27 @@ final class AuthenticatedHTTPClient: HTTPClient {
     }
     
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        return performRequestWithToken(request: request)
+            .flatMap{ (data, response) in
+                if response.statusCode == 401 {
+                    return self.performRequestWithRefreshToken(request: request)
+                }
+                return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    private func performRequestWithRefreshToken(request: URLRequest)  -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+        var request = request
+        return tokenProvider.refreshToken()
+            .flatMap { token in
+                request.setBearerToken(token)
+                return self.client.perform(request: request)
+            }
+            .eraseToAnyPublisher()
+    }
+    
+    private func performRequestWithToken(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         var request = request
         return tokenProvider.fetchToken()
             .flatMap { token in

@@ -40,13 +40,10 @@ final class AuthenticatedNetwork: NetworkModule {
         ])
         
         return network.perform(request: request)
-            .tryMap { data, response in
-                guard response.statusCode == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                return Void()
+            .tryMap { data, response -> String in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { _ in Void() }
             .eraseToAnyPublisher()
     }
     
@@ -60,13 +57,10 @@ final class AuthenticatedNetwork: NetworkModule {
         ])
         
         return network.perform(request: request)
-            .tryMap { data, response in
-                guard response.statusCode == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                return Void()
+            .tryMap { data, response -> String in
+                try GenericMapper.map(data: data, response: response)
             }
+            .map { _ in Void() }
             .eraseToAnyPublisher()
     }
     

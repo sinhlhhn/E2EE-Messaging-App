@@ -22,10 +22,17 @@ final class HttpAuthenticationNetwork: AuthenticationNetwork {
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
         return network.perform(request: request)
-            .tryMap { data, response -> AuthenticationResponse in
-                try GenericMapper.map(data: data, response: response)
+            .tryMap { data, response in
+                
+                guard response.statusCode == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
             }
-            .map { AuthenticationModel(accessToken: $0.accessToken, refreshToken: $0.refreshToken) }
             .eraseToAnyPublisher()
     }
     
@@ -35,10 +42,17 @@ final class HttpAuthenticationNetwork: AuthenticationNetwork {
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
         return network.perform(request: request)
-            .tryMap { data, response -> AuthenticationResponse in
-                try GenericMapper.map(data: data, response: response)
+            .tryMap { data, response in
+                
+                guard response.statusCode == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                
+                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
             }
-            .map { AuthenticationModel(accessToken: $0.accessToken, refreshToken: $0.refreshToken) }
             .eraseToAnyPublisher()
     }
 }
