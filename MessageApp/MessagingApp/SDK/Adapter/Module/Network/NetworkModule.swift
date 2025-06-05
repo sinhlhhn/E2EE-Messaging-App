@@ -20,9 +20,6 @@ protocol NetworkModule {
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error>
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error>
     func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error>
-}
-
-protocol AuthenticationNetwork {
-    func registerUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, Error>
-    func logInUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, Error>
+    
+    func logOut(userName: String) -> AnyPublisher<Void, Error>
 }

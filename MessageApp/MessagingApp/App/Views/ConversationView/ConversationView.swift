@@ -27,25 +27,30 @@ struct ConversationView: View {
                     viewModel.select(user: user)
                 }
             }
+            .refreshable {
+                viewModel.fetchUsers()
+            }
         }
         .onAppear {
             viewModel.fetchUsers()
         }
         .toolbar {
-//            ToolbarItem(placement: .navigationBarTrailing) {
-//                Button {
-//                    viewModel.logout()
-//                } label: {
-//                    Text("Log Out")
-//                        .foregroundStyle(Color.red)
-//                }
-//            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    viewModel.logout()
+                } label: {
+                    Text("Log Out")
+                        .foregroundStyle(Color.red)
+                }
+            }
         }
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .navigationTitle("Conversation")
     }
 }
+
+
 
 import Combine
 @Observable
@@ -54,11 +59,13 @@ class ConversationViewModel {
     var sender: String
     
     private let service: UserUseCase
+    private let logOutUseCase: LogOutUseCase
     private var cancellables: Set<AnyCancellable> = []
     private let didTapItem: (String, String) -> Void
     private let didTapLogOut: () -> Void
     
-    init(sender: String, service: UserUseCase, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) {
+    init(sender: String, logOutUseCase: LogOutUseCase, service: UserUseCase, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) {
+        self.logOutUseCase = logOutUseCase
         self.sender = sender
         self.service = service
         self.didTapItem = didTapItem
@@ -87,10 +94,22 @@ class ConversationViewModel {
     }
     
     func logout() {
-        didTapLogOut()
+        logOutUseCase.logOut(userName: sender)
+            .receive(on: DispatchQueue.main)
+            .sink { completion in
+                switch completion {
+                case .failure(let error):
+                    //TODO: -show error state
+                    debugPrint("❌ logout failed")
+                case .finished: break
+                }
+            } receiveValue: { [weak self] _ in
+                self?.didTapLogOut()
+            }
+            .store(in: &cancellables)
     }
 }
 
 #Preview {
-    ConversationView(viewModel: ConversationViewModel(sender: "", service: NullUserService(), didTapItem: { _, _ in }, didTapLogOut: {}))
+    ConversationView(viewModel: ConversationViewModel(sender: "", logOutUseCase: NullLogOutUseCase(), service: NullUserService(), didTapItem: { _, _ in }, didTapLogOut: {}))
 }

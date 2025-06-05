@@ -70,3 +70,9 @@ final class NullMessageService: MessageUseCase {
         Empty<[Message], Error>().eraseToAnyPublisher()
     }
 }
+
+final class NullLogOutUseCase: LogOutUseCase {
+    func logOut(userName: String) -> AnyPublisher<Void, any Error> {
+        Empty<Void, Error>().eraseToAnyPublisher()
+    }
+}

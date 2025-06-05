@@ -10,4 +10,5 @@ import Foundation
 public protocol KeyStoreModule {
     func store<T>(key: String, value: T)
     func retrieve<T>(key: String) -> T?
+    func delete(key: String)
 }

@@ -9,8 +9,8 @@ import Foundation
 
 extension String {
     static let secureKey = "SECURE_KEY"
-    static let loggedInUserKey = "LOGGED_IN_USER"
     static let refreshToken = "REFRESH_TOKEN"
+    static let userName = "USER_NAME"
 }
 
 final class UserDefaultsKeyStoreService: KeyStoreModule {
@@ -22,5 +22,9 @@ final class UserDefaultsKeyStoreService: KeyStoreModule {
     
     func retrieve<T>(key: String) -> T? {
         return userDefaults.value(forKey: key) as? T
+    }
+    
+    func delete(key: String) {
+        return userDefaults.removeObject(forKey: key)
     }
 }
