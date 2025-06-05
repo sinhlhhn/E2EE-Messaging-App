@@ -18,8 +18,11 @@ final class RetryAuthenticatedHTTPClient: HTTPClient {
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         let retryTimes = 2
         return client.perform(request: request)
-            .catch { error in
-                return self.performWithRetry(request, retryTimes: retryTimes)
+            .flatMap { (data, response) in
+                if response.statusCode != 200 {
+                    return self.performWithRetry(request, retryTimes: retryTimes)
+                }
+                return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
     }
