@@ -8,7 +8,7 @@ import SwiftUI
 final class Factory {
     private lazy var client: HTTPClient = URLSession.shared
     private lazy var retryAuthenticatedClient: HTTPClient = RetryAuthenticatedHTTPClient(client: client)
-    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore, needAuth: {})
+    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore)
     private lazy var authenticatedClient: HTTPClient = AuthenticatedHTTPClient(client: client, tokenProvider: tokenProvider)
     
     private lazy var network: AuthenticatedNetwork = AuthenticatedNetwork(network: authenticatedClient)
@@ -26,14 +26,11 @@ final class Factory {
 // Root
 extension Factory {
     func createRootView(didLogin: @escaping () -> Void, didGoToConversation: @escaping (String) -> Void) -> some View {
-        Text("Loading")
+        let viewModel = SplashViewModel(tokenProvider: tokenProvider, keyStore: keyStore, needAuth: didLogin, didAuth: didGoToConversation)
+        
+        return SplashView(viewModel: viewModel)
             .onAppear {
-                let isAuthent: String? = self.keyStore.retrieve(key: .refreshToken)
-                if let _ = isAuthent, let user: String = self.keyStore.retrieve(key: .userName) {
-                    didGoToConversation(user)
-                } else {
-                    didLogin()
-                }
+                viewModel.checkAuthentication()
             }
     }
     

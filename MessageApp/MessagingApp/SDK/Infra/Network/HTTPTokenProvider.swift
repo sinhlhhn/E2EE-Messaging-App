@@ -17,16 +17,25 @@ final class HTTPTokenProvider: TokenProvider {
         case authenticated
     }
     
-    private let needAuth: () -> Void
+    private enum AuthenticationError: Error {
+        case refreshTokenExpired
+    }
+    
+    private let authenticationState = PassthroughSubject<AuthenticationState, Never>()
+    
     private var currentToken: String?
     private var refreshSubject: PassthroughSubject<String, Error>?
     private let lock = NSLock()
     private var cancellables = Set<AnyCancellable>()
     
-    init(network: HTTPClient, keyStore: KeyStoreModule, needAuth: @escaping () -> Void) {
+    init(network: HTTPClient, keyStore: KeyStoreModule) {
         self.network = network
         self.keyStore = keyStore
-        self.needAuth = needAuth
+    }
+    
+    func subscribeToAuthenticationState() -> AnyPublisher<AuthenticationState, Never> {
+        authenticationState
+            .eraseToAnyPublisher()
     }
     
     func fetchToken() -> AnyPublisher<String, any Error> {
@@ -57,7 +66,7 @@ final class HTTPTokenProvider: TokenProvider {
                 self?.refreshSubject = nil
                 if case .failure(let error) = completion {
                     subject.send(completion: .finished)
-                    self?.needAuth()
+                    self?.handleError(error: error)
                 }
             }, receiveValue: { [weak self] response in
                 self?.keyStore.store(key: .refreshToken, value: response.refreshToken)
@@ -70,6 +79,12 @@ final class HTTPTokenProvider: TokenProvider {
         return subject.eraseToAnyPublisher()
     }
     
+    private func handleError(error: Error) {
+        if let error = error as? AuthenticationError, error == .refreshTokenExpired {
+            authenticationState.send(.loggedOut)
+        }
+    }
+    
     private func performRefresh(refreshToken: String?) -> AnyPublisher<AuthenticationModel, Error> {
         guard let refreshToken = refreshToken else {
             return Fail<AuthenticationModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
@@ -80,7 +95,12 @@ final class HTTPTokenProvider: TokenProvider {
         
         return network.perform(request: request)
             .tryMap { data, response in
-                guard response.statusCode == 200 else {
+                let statusCode = response.statusCode
+                guard statusCode == 200 else {
+                    if statusCode == 403 {
+                        debugPrint("Got 403, logout user")
+                        throw AuthenticationError.refreshTokenExpired
+                    }
                     let error = URLError(.badServerResponse)
                     throw error
                 }

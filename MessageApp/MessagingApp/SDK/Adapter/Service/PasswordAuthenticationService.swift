@@ -33,7 +33,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
             }
             .flatMap { _ in
                 let exchangeKey = self.secureKey.generateExchangeKey()
-                self.keyStore.store(key: data.email, value: exchangeKey.privateKey)
+                self.keyStore.store(key: .privateKey, value: exchangeKey.privateKey)
                 return self.network.sendPublicKey(user: data.email, publicKey:  exchangeKey.publicKey)
                     .map { _ in exchangeKey.privateKey }
             }
@@ -62,7 +62,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
                 try self.restoreKey.restoreKey(response: response, data: data)
             }
             .map { key in
-                self.keyStore.store(key: data.email, value: key)
+                self.keyStore.store(key: .privateKey, value: key)
                 self.keyStore.store(key: .userName, value: data.email)
                 return ()
             }

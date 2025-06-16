@@ -47,6 +47,12 @@ router.post("/token", (req, res) => {
   if (!record) return res.status(403).json({ error: "Invalid refresh token" });
 
   try {
+    // if the token is expired. We do not need to decode the token anymore (improve performance).
+    const now = new Date();
+    if (new Date(record.expiresAt) < now) {
+      return res.status(403).json({ error: "Refresh token expired" });
+    }
+    
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
     db.prepare("DELETE FROM refresh_tokens WHERE token = ?").run(token);
