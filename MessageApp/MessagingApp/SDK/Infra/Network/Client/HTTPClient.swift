@@ -15,11 +15,13 @@ protocol HTTPClient {
 extension URLSession: HTTPClient {
     struct InvalidHTTPResponseError: Error {}
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), Error> {
+        debugPrint("☁️ CURL: \(request.curlString())")
         return dataTaskPublisher(for: request)
             .tryMap { result in
                 guard let httpResponse = result.response as? HTTPURLResponse else {
                     throw InvalidHTTPResponseError()
                 }
+                debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
                 return (result.data, httpResponse)
             }
             .eraseToAnyPublisher()

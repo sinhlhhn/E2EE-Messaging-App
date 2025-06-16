@@ -38,7 +38,7 @@ class RemoteMessageService: MessageUseCase {
             .tryMap { publicKey, salt -> (Data, Data, Data) in
                 guard let publicKeyData = Data(base64Encoded: publicKey),
                       let saltData = Data(base64Encoded: salt),
-                      let privateKey: Data? = self.keyStore.retrieve(key: data.sender),
+                      let privateKey: Data? = self.keyStore.retrieve(key: .privateKey),
                       let privateKey = privateKey else {
                     throw NSError(domain: "Invalid base64 string", code: 0, userInfo: nil)
                 }

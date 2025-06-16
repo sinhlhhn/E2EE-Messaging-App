@@ -7,7 +7,14 @@
 
 import Combine
 
+enum AuthenticationState {
+    case loggedIn(String)
+    case loggedOut
+}
+
 protocol TokenProvider {
+    func subscribeToAuthenticationState() -> AnyPublisher<AuthenticationState, Never>
+    
     func fetchToken() -> AnyPublisher<String, Error>
     func refreshToken() -> AnyPublisher<String, Error>
 }

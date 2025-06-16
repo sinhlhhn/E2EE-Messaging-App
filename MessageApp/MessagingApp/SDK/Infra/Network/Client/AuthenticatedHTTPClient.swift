@@ -20,7 +20,8 @@ final class AuthenticatedHTTPClient: HTTPClient {
     func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         return performRequestWithToken(request: request)
             .flatMap{ (data, response) in
-                if response.statusCode == 401 {
+                if response.statusCode == 403 {
+                    debugPrint("Got 403, refreshing token...")
                     return self.performRequestWithRefreshToken(request: request)
                 }
                 return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
