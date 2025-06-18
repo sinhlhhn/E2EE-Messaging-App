@@ -79,4 +79,17 @@ function generateTokenPair(userId, username) {
   return { accessToken, refreshToken };
 }
 
+// reduce token expire date to test auto refresh token
+// function generateTokenPair(userId, username) {
+
+//   const accessToken = jwt.sign({ sub: userId, username }, process.env.JWT_SECRET, { expiresIn: "30s" });
+//   const refreshToken = jwt.sign({ sub: userId, username }, process.env.JWT_SECRET, { expiresIn: "2m" });
+
+//   // Insert with a valid interval expression
+//   db.prepare("INSERT INTO refresh_tokens (userId, token, expiresAt) VALUES (?, ?, datetime('now', '+2 days'))")
+//     .run(userId, refreshToken);
+
+//   return { accessToken, refreshToken };
+// }
+
 module.exports = router;
