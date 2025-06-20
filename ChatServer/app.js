@@ -15,10 +15,16 @@ app.use("/api", chatRoutes);
 const https = require('https');
 const { Server } = require('socket.io');
 
-// Load TLS credentials securely
+// Load TLS credentials securely with RSA algorithm
+// const tlsOptions = {
+//   key: fs.readFileSync('tls/private.key'),
+//   cert: fs.readFileSync('tls/certificate.cer'),
+// };
+
+// Load TLS credentials securely with EC cryptography
 const tlsOptions = {
-  key: fs.readFileSync('/Users/sinhlh.avi/Documents/Code/E2EE-Messaging-App/ChatServer/tls/private.key'),
-  cert: fs.readFileSync('/Users/sinhlh.avi/Documents/Code/E2EE-Messaging-App/ChatServer/tls/certificate.cer'),
+  key: fs.readFileSync('tls/ecc-key.pem'),
+  cert: fs.readFileSync('tls/ecc-cert.pem'),
 };
 
 const HOST = 'localhost';
