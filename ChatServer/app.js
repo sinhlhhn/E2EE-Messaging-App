@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require("express");
+const fs = require('fs');
 const chatRoutes = require("./routes/chat");
 const authRoutes = require("./routes/authentication");
 const db = require("./db/index");
@@ -11,10 +12,21 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/api", chatRoutes);
 
-const http = require('http');
+const https = require('https');
 const { Server } = require('socket.io');
 
-const server = http.createServer(app);
+// Load TLS credentials securely
+const tlsOptions = {
+  key: fs.readFileSync('/Users/sinhlh.avi/Documents/Code/E2EE-Messaging-App/ChatServer/tls/private.key'),
+  cert: fs.readFileSync('/Users/sinhlh.avi/Documents/Code/E2EE-Messaging-App/ChatServer/tls/certificate.cer'),
+};
+
+const HOST = 'localhost';
+const PORT = 443;
+
+const server = https.createServer(tlsOptions, app).listen(PORT, HOST, () => {
+  console.log(`✅ HTTPS server XXX listening on https://${HOST}:${PORT}`);
+});
 const io = new Server(server);
 
 const connectedUsers = new Map(); // username -> socket
@@ -69,6 +81,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(3000, () => {
-  console.log('Server listening on http://localhost:3000');
+server.listen(443, () => {
+  
 });

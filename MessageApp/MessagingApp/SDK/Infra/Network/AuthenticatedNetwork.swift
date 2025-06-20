@@ -8,6 +8,8 @@
 import Foundation
 import Combine
 
+let localhost = "https://localhost:443/"
+
 final class AuthenticatedNetwork: NetworkModule {
     private let network: HTTPClient
     
@@ -16,7 +18,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func logOut(userName: String) -> AnyPublisher<Void, any Error> {
-        let urlString = "http://localhost:3000/api/logout"
+        let urlString = "\(localhost)api/logout"
         let request = buildRequest(url: urlString, method: .post, body: ["username": userName])
         
         return network.perform(request: request)
@@ -32,7 +34,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func sendPublicKey(user: String, publicKey: Data) -> AnyPublisher<Void, Error> {
-        let urlString = "http://localhost:3000/api/keys"
+        let urlString = "\(localhost)api/keys"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
@@ -48,7 +50,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func sendBackupKey(user: String, salt: String, encryptedKey: String) -> AnyPublisher<Void, Error> {
-        let urlString = "http://localhost:3000/api/key-backup"
+        let urlString = "\(localhost)api/key-backup"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
@@ -65,7 +67,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyModel, Error> {
-        let urlString = "http://localhost:3000/api/key-backup/\(username)"
+        let urlString = "\(localhost)api/key-backup/\(username)"
         
         let request = buildRequest(url: urlString)
         
@@ -78,7 +80,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchUsers() -> AnyPublisher<[User], Error> {
-        let urlString = "http://localhost:3000/api/users"
+        let urlString = "\(localhost)api/users"
         
         let request = buildRequest(url: urlString)
         
@@ -91,7 +93,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error> {
-        let urlString = "http://localhost:3000/api/session"
+        let urlString = "\(localhost)api/session"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "senderUsername": sender,
@@ -107,7 +109,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error> {
-        let urlString = "http://localhost:3000/api/keys/\(username)"
+        let urlString = "\(localhost)api/keys/\(username)"
         
         let request = buildRequest(url: urlString)
         
@@ -121,7 +123,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error> {
         let sender = data.sender
-        let urlString = "http://localhost:3000/api/messages/\(data.sender)/\(data.receiver)"
+        let urlString = "\(localhost)api/messages/\(data.sender)/\(data.receiver)"
         
         var params = [String: Any]()
         if let before = data.before {
