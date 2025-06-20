@@ -9,7 +9,10 @@ import Foundation
 import CryptoKit
 
 final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate {
-    private let pinnedKeyHashBase64 = "2IoUR8KJqun7XAiN6g8Jz3DIXfmY2d4+aPdWPRQAyk4="
+    private let pinnedKeyHashBase64s = [
+        "2IoUR8KJqun7XAiN6g8Jz3DIXfmY2d4+aPdWPRQAyk4=",
+        "WpOCr2ySOjvGzA1wkEHhaAE+CgPa+mslzbO8Mz7LwK8="
+    ]
     
     func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
@@ -46,13 +49,16 @@ final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate {
         print("Public Key Hash (Base64):", keyHashBase64)
 
         // Compare against your pinned hash
-        if keyHashBase64 == pinnedKeyHashBase64 {
-            let credential = URLCredential(trust: serverTrust)
-            debugPrint("useCredential ✅")
-            completionHandler(.useCredential, credential)
-        } else {
-            debugPrint("cancelAuthenticationChallenge ❌")
-            completionHandler(.cancelAuthenticationChallenge, nil)
+        for pinnedKeyHashBase64 in pinnedKeyHashBase64s {
+            if keyHashBase64 == pinnedKeyHashBase64 {
+                let credential = URLCredential(trust: serverTrust)
+                debugPrint("useCredential ✅")
+                completionHandler(.useCredential, credential)
+                return
+            } else {
+                debugPrint("cancelAuthenticationChallenge ❌")
+                completionHandler(.cancelAuthenticationChallenge, nil)
+            }
         }
     }
 }
