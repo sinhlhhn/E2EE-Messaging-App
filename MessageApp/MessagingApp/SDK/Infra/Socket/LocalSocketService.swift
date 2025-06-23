@@ -35,11 +35,11 @@ class LocalSocketService: SocketUseCase {
     private let subject = PassthroughSubject<Message, Error>()
     private let connectSubject = PassthroughSubject<Void, Error>()
 
-    init(encryptService: EncryptionModule, decryptService: DecryptionModule, keyStore: KeyStoreModule) {
+    init(sessionDelegate: URLSessionDelegate, encryptService: EncryptionModule, decryptService: DecryptionModule, keyStore: KeyStoreModule) {
         self.encryptService = encryptService
         self.decryptService = decryptService
         self.keyStore = keyStore
-        manager = SocketManager(socketURL: URL(string: "http://localhost:3000")!, config: [.log(false), .compress])
+        manager = SocketManager(socketURL: URL(string: "https://localhost:3000")!, config: [.log(false), .compress, .sessionDelegate(sessionDelegate)])
         socket = manager.defaultSocket
         
         setupHandlers()

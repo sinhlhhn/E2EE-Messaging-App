@@ -13,6 +13,7 @@ app.use("/auth", authRoutes);
 app.use("/api", chatRoutes);
 
 const https = require('https');
+const http = require('http');
 const { Server } = require('socket.io');
 
 // Load TLS credentials securely with RSA algorithm
@@ -28,11 +29,14 @@ const tlsOptions = {
 };
 
 const HOST = 'localhost';
-const PORT = 443;
+const PORT = 3000;
 
-const server = https.createServer(tlsOptions, app).listen(PORT, HOST, () => {
-  console.log(`✅ HTTPS server XXX listening on https://${HOST}:${PORT}`);
-});
+// create https server
+const server = https.createServer(tlsOptions, app)
+
+// create http server
+// const server = http.createServer(app)
+
 const io = new Server(server);
 
 const connectedUsers = new Map(); // username -> socket
@@ -87,6 +91,6 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(443, () => {
-  
+server.listen(PORT, HOST, () => {
+  console.log(`✅ HTTPS server XXX listening on https://${HOST}:${PORT}`);
 });
