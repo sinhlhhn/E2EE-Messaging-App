@@ -47,6 +47,9 @@ final class NullSocketService<User, Message>: SocketUseCase {
     func connect(user: User) -> AnyPublisher<Void, any Error> {
         Empty<Void, Error>().eraseToAnyPublisher()
     }
+    
+    func disconnect() {
+    }
 }
 
 final class NullAuthenticationService<Authentication>: AuthenticationUseCase {

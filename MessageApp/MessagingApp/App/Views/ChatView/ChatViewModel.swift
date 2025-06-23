@@ -14,8 +14,8 @@ class ChatViewModel {
     //TODO: -should be let
     var sender: String
     var receiver: String
-    let service: any SocketUseCase<String, TextMessage>
-    let messageService: MessageUseCase
+    private let service: any SocketUseCase<String, TextMessage>
+    private let messageService: MessageUseCase
     var messages: [Message] = []
     var reachedTop: Bool = false
     
@@ -24,6 +24,7 @@ class ChatViewModel {
     private var cancellable: AnyCancellable?
     private var connectCancellable: AnyCancellable?
     private var fetchMessageCancellable: AnyCancellable?
+    private let passthroughSubject = PassthroughSubject<FetchMessageData, Never>()
     
     private let didTapBack: () -> Void
     
@@ -84,8 +85,6 @@ class ChatViewModel {
         passthroughSubject.send(FetchMessageData(sender: sender, receiver: receiver, before: firstMessageId, limit: 10, firstLoad: false))
     }
     
-    let passthroughSubject = PassthroughSubject<FetchMessageData, Never>()
-    
     private func fetchMessage() {
         fetchMessageCancellable = passthroughSubject
             .delay(for: .seconds(2), scheduler: DispatchQueue.global())
@@ -115,6 +114,7 @@ class ChatViewModel {
     }
     
     func reset() {
+        service.disconnect()
         didTapBack()
         messages = []
     }

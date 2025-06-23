@@ -145,8 +145,8 @@ class LocalSocketService: SocketUseCase {
         subject.eraseToAnyPublisher()
     }
     
-    func login(email: String, password: String, completion: @escaping () -> Void) {
-        socket.emit("register", email, password, completion: completion)
+    func disconnect() {
+        socket.disconnect()
     }
     
 }

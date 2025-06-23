@@ -15,4 +15,5 @@ protocol SocketUseCase<User, Message> {
     //TODO: -display status of message: sending, sent, read
     func sendMessage(_ message: Message)
     func subscribeToIncomingMessages() -> AnyPublisher<Message, Error>
+    func disconnect()
 }
