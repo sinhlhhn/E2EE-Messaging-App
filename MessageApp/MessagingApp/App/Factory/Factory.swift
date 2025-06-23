@@ -72,7 +72,7 @@ extension Factory {
             let decryptService = AESDecryption()
             let secureKeyService = P256SecureKeyService()
             let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: network)
-            let socketService = LocalSocketService(encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
+            let socketService = LocalSocketService(sessionDelegate: pinningDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
             chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, messageService: messageService, didTapBack: didTapBack)
         }
         

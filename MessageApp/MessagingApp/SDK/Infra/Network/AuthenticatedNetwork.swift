@@ -8,7 +8,8 @@
 import Foundation
 import Combine
 
-let localhost = "https://localhost:443/"
+//let localhost = "http://localhost:3000/"
+let localhost = "https://localhost:3000/"
 
 final class AuthenticatedNetwork: NetworkModule {
     private let network: HTTPClient

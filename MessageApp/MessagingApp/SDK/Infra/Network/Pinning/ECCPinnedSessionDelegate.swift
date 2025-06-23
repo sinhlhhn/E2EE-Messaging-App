@@ -55,10 +55,9 @@ final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate {
                 debugPrint("useCredential ✅")
                 completionHandler(.useCredential, credential)
                 return
-            } else {
-                debugPrint("cancelAuthenticationChallenge ❌")
-                completionHandler(.cancelAuthenticationChallenge, nil)
             }
         }
+        debugPrint("cancelAuthenticationChallenge ❌")
+        completionHandler(.cancelAuthenticationChallenge, nil)
     }
 }
