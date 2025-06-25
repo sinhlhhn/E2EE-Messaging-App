@@ -12,9 +12,9 @@ import Combine
 let localhost = "https://localhost:3000/"
 
 final class AuthenticatedNetwork: NetworkModule {
-    private let network: URLHTTPClient
+    private let network: DataTaskHTTPClient
     
-    init(network: URLHTTPClient) {
+    init(network: DataTaskHTTPClient) {
         self.network = network
     }
     

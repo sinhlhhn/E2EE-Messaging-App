@@ -12,14 +12,14 @@ import CryptoKit
 
 final class PasswordAuthenticationService: AuthenticationUseCase {
     
-    private let authenticatedNetwork: AuthenticationNetwork
+    private let unauthenticatedNetwork: UnauthenticatedNetworking
     private let network: NetworkModule
     private let secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>
     private let keyStore: KeyStoreModule
     private let restoreKey: RestoreKeyModule
     
-    init(authenticatedNetwork: AuthenticationNetwork, network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule, restoreKey: RestoreKeyModule) {
-        self.authenticatedNetwork = authenticatedNetwork
+    init(unauthenticatedNetwork: UnauthenticatedNetworking, network: NetworkModule, secureKey: any SecureKeyModule<P256ExchangeKey, P256KeyData>, keyStore: KeyStoreModule, restoreKey: RestoreKeyModule) {
+        self.unauthenticatedNetwork = unauthenticatedNetwork
         self.network = network
         self.secureKey = secureKey
         self.keyStore = keyStore
@@ -27,7 +27,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     }
     
     func register(data: PasswordAuthentication) -> AnyPublisher<Void, any Error> {
-        return authenticatedNetwork.registerUser(data: data)
+        return unauthenticatedNetwork.registerUser(data: data)
             .map { data in
                 self.keyStore.store(key: .refreshToken, value: data.refreshToken)
             }
@@ -51,7 +51,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     }
     
     func login(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
-        authenticatedNetwork.logInUser(data: data)
+        unauthenticatedNetwork.logInUser(data: data)
             .map { data in
                 self.keyStore.store(key: .refreshToken, value: data.refreshToken)
             }

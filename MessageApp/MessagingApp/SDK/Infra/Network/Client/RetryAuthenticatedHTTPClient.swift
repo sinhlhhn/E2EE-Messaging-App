@@ -9,9 +9,9 @@ import Foundation
 import Combine
 
 final class RetryAuthenticatedHTTPClient: HTTPClient {
-    private let client: URLHTTPClient
+    private let client: DataTaskHTTPClient
     
-    init(client: URLHTTPClient) {
+    init(client: DataTaskHTTPClient) {
         self.client = client
     }
     

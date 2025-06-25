@@ -9,11 +9,11 @@ import Foundation
 import Combine
 
 final class AuthenticatedHTTPClient: HTTPClient {
-    private let client: URLHTTPClient
+    private let client: DataTaskHTTPClient
     private let tokenProvider: TokenProvider
     
     init(
-        client: URLHTTPClient,
+        client: DataTaskHTTPClient,
         tokenProvider: TokenProvider
     ) {
         self.client = client
