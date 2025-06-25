@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 final class HTTPTokenProvider: TokenProvider {
-    private let network: URLHTTPClient
+    private let network: DataTaskHTTPClient
     private let keyStore: KeyStoreModule
     
     private enum AuthState {
@@ -29,7 +29,7 @@ final class HTTPTokenProvider: TokenProvider {
     private var cancellables = Set<AnyCancellable>()
     
     init(
-        network: URLHTTPClient,
+        network: DataTaskHTTPClient,
         keyStore: KeyStoreModule
     ) {
         self.network = network

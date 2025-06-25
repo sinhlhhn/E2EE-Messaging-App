@@ -8,11 +8,11 @@ import Foundation
 import Combine
 
 final class AuthenticatedUploadHTTPClient: HTTPClient {
-    private let client: UploadHTTPClient
+    private let client: UploadTaskHTTPClient
     private let tokenProvider: TokenProvider
     
     init(
-        client: UploadHTTPClient,
+        client: UploadTaskHTTPClient,
         tokenProvider: TokenProvider
     ) {
         self.client = client

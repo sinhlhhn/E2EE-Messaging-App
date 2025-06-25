@@ -8,7 +8,7 @@
 import Foundation
 import Combine
 
-final class UnauthenticatedNetwork: UnauthenticatedNetwork {
+final class UnauthenticatedNetwork: UnauthenticatedNetworking {
     
     private let network: DataTaskHTTPClient
     
