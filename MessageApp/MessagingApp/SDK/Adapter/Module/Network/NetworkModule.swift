@@ -22,6 +22,6 @@ protocol NetworkModule {
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error>
     func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error>
     
-    func uploadImage(imageData: Data) -> AnyPublisher<Void, Error>
+    func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<Void, Error>
     func downloadImage(url: String) -> AnyPublisher<Data, Error>
 }
