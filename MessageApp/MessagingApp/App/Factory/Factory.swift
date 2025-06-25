@@ -5,17 +5,23 @@
 
 import SwiftUI
 
+typealias URLHTTPClient = any HTTPClient<URLRequest, (Data, HTTPURLResponse)>
+typealias UploadHTTPClient = any HTTPClient<(URLRequest, Data), (Data?, HTTPURLResponse)>
+
 final class Factory {
     private lazy var pinningDelegate = ECCPinnedSessionDelegate()
     private lazy var configuration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
-    private lazy var client: HTTPClient = URLSession(configuration: configuration, delegate: pinningDelegate, delegateQueue: nil)
-    private lazy var retryAuthenticatedClient: HTTPClient = RetryAuthenticatedHTTPClient(client: client)
-    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: client, keyStore: keyStore)
-    private lazy var authenticatedClient: HTTPClient = AuthenticatedHTTPClient(client: client, tokenProvider: tokenProvider)
+    private lazy var session = URLSession(configuration: configuration, delegate: pinningDelegate, delegateQueue: nil)
+    private lazy var fetchClient: URLHTTPClient = URLSessionHTTPClient(session: session)
+    private lazy var uploadClient: UploadHTTPClient = URLSessionUploadHTTPClient(session: session)
+    
+    private lazy var retryAuthenticatedClient: URLHTTPClient = RetryAuthenticatedHTTPClient(client: fetchClient)
+    private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: retryAuthenticatedClient, keyStore: keyStore)
+    private lazy var authenticatedClient: URLHTTPClient = AuthenticatedHTTPClient(client: fetchClient, tokenProvider: tokenProvider)
     
     private lazy var network: AuthenticatedNetwork = AuthenticatedNetwork(network: authenticatedClient)
     
-    private lazy var authenticationNetwork = HttpAuthenticationNetwork(network: client)
+    private lazy var authenticationNetwork = HttpAuthenticationNetwork(network: fetchClient)
     private var conversationViewModel: ConversationViewModel?
     
     private lazy var keyStore = UserDefaultsKeyStoreService()

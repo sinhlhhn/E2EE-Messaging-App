@@ -1,5 +1,5 @@
 //
-//  HttpAuthenticationNetwork.swift
+//  UnauthenticatedNetwork.swift
 //  MessagingApp
 //
 //  Created by SinhLH.AVI on 5/6/25.
@@ -8,11 +8,11 @@
 import Foundation
 import Combine
 
-final class HttpAuthenticationNetwork: AuthenticationNetwork {
+final class UnauthenticatedNetwork: UnauthenticatedNetwork {
     
-    private let network: HTTPClient
+    private let network: DataTaskHTTPClient
     
-    init(network: HTTPClient) {
+    init(network: DataTaskHTTPClient) {
         self.network = network
     }
     

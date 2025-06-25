@@ -12,12 +12,13 @@ import Combine
 let localhost = "https://localhost:3000/"
 
 final class AuthenticatedNetwork: NetworkModule {
-    private let network: HTTPClient
+    private let network: URLHTTPClient
     
-    init(network: HTTPClient) {
+    init(network: URLHTTPClient) {
         self.network = network
     }
     
+    //MARK: -Authentication Flow
     func logOut(userName: String) -> AnyPublisher<Void, any Error> {
         let urlString = "\(localhost)api/logout"
         let request = buildRequest(url: urlString, method: .post, body: ["username": userName])
@@ -80,6 +81,7 @@ final class AuthenticatedNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
     
+    //MARK: -User
     func fetchUsers() -> AnyPublisher<[User], Error> {
         let urlString = "\(localhost)api/users"
         
@@ -93,6 +95,7 @@ final class AuthenticatedNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
     
+    //MARK: -Conversation
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error> {
         let urlString = "\(localhost)api/session"
         
@@ -143,4 +146,39 @@ final class AuthenticatedNetwork: NetworkModule {
             .map { $0.map { Message(messageId: $0.id, content: $0.text, isFromCurrentUser: $0.sender == sender)} }
             .eraseToAnyPublisher()
     }
+    
+    //MARK: -Image
+    func uploadImage(imageData: Data) -> AnyPublisher<Void, Error> {
+        guard let url = URL(string: "\(localhost)uploads") else {
+            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        
+        let boundary = UUID().uuidString
+        let fieldName = "image"
+        let fileName = "image.jpg"
+        
+        // Set Content-Type
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        
+        // Create multipart form body
+        var body = Data()
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+//        network.perform(request: <#T##URLRequest#>)
+        return Empty<Void, Error>().eraseToAnyPublisher()
+    }
+    
+    func downloadImage(url: String) -> AnyPublisher<Data, Error> {
+        Empty<Data, Error>().eraseToAnyPublisher()
+    }
+
 }
