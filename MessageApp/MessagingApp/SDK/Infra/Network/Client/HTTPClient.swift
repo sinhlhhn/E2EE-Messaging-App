@@ -8,22 +8,17 @@
 import Foundation
 import Combine
 
-protocol HTTPClient {
-    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), Error>
+enum UploadResponse {
+    case progress(percentage: Double)
+    case response(response: HTTPURLResponse, data: Data?)
 }
 
-extension URLSession: HTTPClient {
-    struct InvalidHTTPResponseError: Error {}
-    func perform(request: URLRequest) -> AnyPublisher<(Data, HTTPURLResponse), Error> {
-        debugPrint("☁️ CURL: \(request.curlString())")
-        return dataTaskPublisher(for: request)
-            .tryMap { result in
-                guard let httpResponse = result.response as? HTTPURLResponse else {
-                    throw InvalidHTTPResponseError()
-                }
-                debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
-                return (result.data, httpResponse)
-            }
-            .eraseToAnyPublisher()
-    }
+struct InvalidHTTPResponseError: Error {}
+
+protocol HTTPClient<Request, Response> {
+    associatedtype Request
+    associatedtype Response
+    func perform(request: Request) -> AnyPublisher<Response, Error>
 }
+
+

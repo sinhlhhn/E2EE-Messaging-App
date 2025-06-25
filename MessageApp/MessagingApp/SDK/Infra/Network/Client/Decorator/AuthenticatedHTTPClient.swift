@@ -2,17 +2,20 @@
 //  AuthenticatedHTTPClient.swift
 //  MessagingApp
 //
-//  Created by SinhLH.AVI on 5/6/25.
+//  Created by SinhLH.AVI on 24/6/25.
 //
 
 import Foundation
 import Combine
 
 final class AuthenticatedHTTPClient: HTTPClient {
-    private let client: HTTPClient
+    private let client: URLHTTPClient
     private let tokenProvider: TokenProvider
     
-    init(client: HTTPClient, tokenProvider: TokenProvider) {
+    init(
+        client: URLHTTPClient,
+        tokenProvider: TokenProvider
+    ) {
         self.client = client
         self.tokenProvider = tokenProvider
     }
