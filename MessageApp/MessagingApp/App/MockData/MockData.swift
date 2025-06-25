@@ -6,6 +6,7 @@
 //
 
 import Combine
+import Foundation
 
 let mockMessages: [Message] = [
     Message(messageId: 1, content: "Hey, how are you?", isFromCurrentUser: true),
@@ -77,5 +78,11 @@ final class NullMessageService: MessageUseCase {
 final class NullLogOutUseCase: LogOutUseCase {
     func logOut(userName: String) -> AnyPublisher<Void, any Error> {
         Empty<Void, Error>().eraseToAnyPublisher()
+    }
+}
+
+final class NullProfileService: ProfileUseCase {
+    func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, any Error> {
+        Empty<UploadResponse, Error>().eraseToAnyPublisher()
     }
 }

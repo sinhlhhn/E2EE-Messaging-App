@@ -13,9 +13,13 @@ let localhost = "https://localhost:3000/"
 
 final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
+    private let uploadNetwork: UploadTaskHTTPClient
+    private let progress: AnyPublisher<Double, Error>
     
-    init(network: DataTaskHTTPClient) {
+    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>) {
         self.network = network
+        self.uploadNetwork = uploadNetwork
+        self.progress = progress
     }
     
     //MARK: -Authentication Flow
@@ -148,37 +152,87 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     //MARK: -Image
-    func uploadImage(imageData: Data) -> AnyPublisher<Void, Error> {
-        guard let url = URL(string: "\(localhost)uploads") else {
+    func uploadImage(
+        images: [MultipartImage],
+        fields: [FormField] = []
+    ) -> AnyPublisher<Void, Error> {
+        guard let url = URL(string: "\(localhost)upload") else {
             return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        
-        let boundary = UUID().uuidString
-        let fieldName = "image"
-        let fileName = "image.jpg"
-        
-        // Set Content-Type
+
+        let boundary = "Boundary-\(UUID().uuidString)"
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        
-        // Create multipart form body
+
         var body = Data()
+
+        // Add fields
+        for field in fields {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
+            body.append("\(field.value)\r\n")
+        }
+
+        // Add images
+        for image in images {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
+            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
+            body.append(image.data)
+            body.append("\r\n")
+        }
+
+        body.append("--\(boundary)--\r\n")
         
-        body.append("--\(boundary)\r\n".data(using: .utf8)!)
-        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/jpeg\r\n\r\n".data(using: .utf8)!)
-        body.append(imageData)
-        body.append("\r\n".data(using: .utf8)!)
-        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        let uploadRequest = (request, body)
         
-//        network.perform(request: <#T##URLRequest#>)
-        return Empty<Void, Error>().eraseToAnyPublisher()
+        let uploadTask = uploadNetwork.perform(request: uploadRequest)
+            .tryMap { data, response in
+                guard response.statusCode == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                return Void()
+            }
+            .eraseToAnyPublisher()
+        
+        return Publishers.CombineLatest(
+            progress,
+            uploadTask.prepend(())
+        )
+        .print("--------------- ")
+        .map { progress, complete in
+            print("slh: \(progress)")
+            return Void()
+        }
+        .eraseToAnyPublisher()
     }
     
     func downloadImage(url: String) -> AnyPublisher<Data, Error> {
         Empty<Data, Error>().eraseToAnyPublisher()
     }
 
+}
+
+struct MultipartImage {
+    let data: Data
+    let fieldName: String
+    let fileName: String
+    let mimeType: String
+}
+
+struct FormField {
+    let name: String
+    let value: String
+}
+
+// MARK: - Data helper
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
+        }
+    }
 }

@@ -8,7 +8,8 @@
 import Foundation
 import CryptoKit
 
-final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate {
+import Combine
+final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
     private let pinnedKeyHashBase64s = [
         "2IoUR8KJqun7XAiN6g8Jz3DIXfmY2d4+aPdWPRQAyk4=",
         "WpOCr2ySOjvGzA1wkEHhaAE+CgPa+mslzbO8Mz7LwK8="
@@ -59,5 +60,21 @@ final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate {
         }
         debugPrint("cancelAuthenticationChallenge ❌")
         completionHandler(.cancelAuthenticationChallenge, nil)
+    }
+    
+    private var progress = PassthroughSubject<Double, Error>()
+    
+    
+    var progressPublisher: AnyPublisher<Double, Error> {
+        progress.eraseToAnyPublisher()
+    }
+    
+    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+        let value = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
+        progress.send(value)
+        print("sinhlh: \(value)")
+        print("sinhlh: progress \(task.progress.fractionCompleted)")
+        print("sinhlh: totalBytesSent \(totalBytesSent)")
+        print("sinhlh: totalBytesExpectedToSend \(totalBytesExpectedToSend)")
     }
 }
