@@ -7,9 +7,12 @@ import SwiftUI
 
 typealias DataTaskHTTPClient = any HTTPClient<URLRequest, (Data, HTTPURLResponse)>
 typealias UploadTaskHTTPClient = any HTTPClient<(URLRequest, Data), (Data?, HTTPURLResponse)>
+typealias DownloadTaskHTTPClient = any HTTPClient<URLRequest, HTTPURLResponse>
 
 final class Factory {
     private lazy var pinning: PinningDelegate = ECCPinning()
+    
+    //MARK: -DataTask
     private lazy var sessionDelegate: URLSessionDelegate = DefaultSessionDelegate(pinning: pinning)
     private lazy var configuration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
     private lazy var session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
@@ -20,10 +23,16 @@ final class Factory {
     private lazy var authenticatedClient: DataTaskHTTPClient = AuthenticatedHTTPClient(client: fetchClient, tokenProvider: tokenProvider)
     private lazy var uploadTaskClient: UploadTaskHTTPClient = AuthenticatedUploadHTTPClient(client: uploadClient, tokenProvider: tokenProvider)
     
+    //MARK: -UploadTask
     private lazy var progressDelegate = UploadSessionDelegate(pinning: pinning)
     private lazy var uploadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
     private lazy var uploadSession = URLSession(configuration: uploadConfiguration, delegate: progressDelegate, delegateQueue: nil)
     private lazy var uploadClient: UploadTaskHTTPClient = URLSessionUploadTaskHTTPClient(session: uploadSession)
+    
+    //MARK: -DownloadTask
+    
+    
+    
     private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: progressDelegate.progressPublisher)
     
     private lazy var unauthenticatedNetwork: UnauthenticatedNetworking = UnauthenticatedNetwork(network: fetchClient)
