@@ -52,17 +52,12 @@ class ProfileViewModel {
             return
         }
         
-//        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
-//            print("Failed to convert image to JPEG data")
-//            return
-//        }
-        guard let imageData = image.jpegData(compressionQuality: 1) else {
+        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
             print("Failed to convert image to JPEG data")
             return
         }
         
         service.uploadImage(image: ImageData(image: imageData, userName: "", fileName: "tiger.jpg", fieldName: "image"))
-            .first()
             .sink { _ in
                 
             } receiveValue: { _ in

@@ -9,9 +9,10 @@ typealias DataTaskHTTPClient = any HTTPClient<URLRequest, (Data, HTTPURLResponse
 typealias UploadTaskHTTPClient = any HTTPClient<(URLRequest, Data), (Data?, HTTPURLResponse)>
 
 final class Factory {
-    private lazy var pinningDelegate = ECCPinnedSessionDelegate()
-    private lazy var configuration: URLSessionConfiguration = URLSessionConfiguration.default
-    private lazy var session = URLSession(configuration: configuration, delegate: pinningDelegate, delegateQueue: nil)
+    private lazy var pinning: PinningDelegate = ECCPinning()
+    private lazy var sessionDelegate: URLSessionDelegate = DefaultSessionDelegate(pinning: pinning)
+    private lazy var configuration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
+    private lazy var session = URLSession(configuration: configuration, delegate: sessionDelegate, delegateQueue: nil)
     private lazy var fetchClient: DataTaskHTTPClient = URLSessionDataTaskHTTPClient(session: session)
     
     private lazy var retryAuthenticatedClient: DataTaskHTTPClient = RetryAuthenticatedHTTPClient(client: fetchClient)
@@ -19,11 +20,11 @@ final class Factory {
     private lazy var authenticatedClient: DataTaskHTTPClient = AuthenticatedHTTPClient(client: fetchClient, tokenProvider: tokenProvider)
     private lazy var uploadTaskClient: UploadTaskHTTPClient = AuthenticatedUploadHTTPClient(client: uploadClient, tokenProvider: tokenProvider)
     
-//    private lazy var progressDelegate = UploadProgressDelegate()
-//    private lazy var uploadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
-//    private lazy var uploadSession = URLSession(configuration: uploadConfiguration, delegate: progressDelegate, delegateQueue: nil)
-    private lazy var uploadClient: UploadTaskHTTPClient = URLSessionUploadTaskHTTPClient(session: session)
-    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: pinningDelegate.progressPublisher)
+    private lazy var progressDelegate = UploadSessionDelegate(pinning: pinning)
+    private lazy var uploadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
+    private lazy var uploadSession = URLSession(configuration: uploadConfiguration, delegate: progressDelegate, delegateQueue: nil)
+    private lazy var uploadClient: UploadTaskHTTPClient = URLSessionUploadTaskHTTPClient(session: uploadSession)
+    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: progressDelegate.progressPublisher)
     
     private lazy var unauthenticatedNetwork: UnauthenticatedNetworking = UnauthenticatedNetwork(network: fetchClient)
     private var conversationViewModel: ConversationViewModel?
@@ -95,7 +96,7 @@ extension Factory {
             let decryptService = AESDecryption()
             let secureKeyService = P256SecureKeyService()
             let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: authenticatedNetwork)
-            let socketService = LocalSocketService(sessionDelegate: pinningDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
+            let socketService = LocalSocketService(sessionDelegate: sessionDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
             chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, messageService: messageService, didTapBack: didTapBack)
         }
         

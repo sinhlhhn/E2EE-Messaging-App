@@ -9,15 +9,14 @@ import Foundation
 import CryptoKit
 
 import Combine
-final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+
+final class ECCPinning: PinningDelegate {
     private let pinnedKeyHashBase64s = [
         "2IoUR8KJqun7XAiN6g8Jz3DIXfmY2d4+aPdWPRQAyk4=",
         "WpOCr2ySOjvGzA1wkEHhaAE+CgPa+mslzbO8Mz7LwK8="
     ]
     
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-
+    func handleChallenge(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let serverTrust = challenge.protectionSpace.serverTrust,
               let serverCerts =  SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
@@ -60,21 +59,5 @@ final class ECCPinnedSessionDelegate: NSObject, URLSessionDelegate, URLSessionTa
         }
         debugPrint("cancelAuthenticationChallenge ❌")
         completionHandler(.cancelAuthenticationChallenge, nil)
-    }
-    
-    private var progress = PassthroughSubject<Double, Error>()
-    
-    
-    var progressPublisher: AnyPublisher<Double, Error> {
-        progress.eraseToAnyPublisher()
-    }
-    
-    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
-        let value = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
-        progress.send(value)
-        print("sinhlh: \(value)")
-        print("sinhlh: progress \(task.progress.fractionCompleted)")
-        print("sinhlh: totalBytesSent \(totalBytesSent)")
-        print("sinhlh: totalBytesExpectedToSend \(totalBytesExpectedToSend)")
     }
 }
