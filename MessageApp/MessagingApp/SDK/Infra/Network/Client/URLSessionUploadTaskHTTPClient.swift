@@ -26,6 +26,7 @@ final class URLSessionUploadTaskHTTPClient: HTTPClient {
             }
             debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
             subject.send((data, httpResponse))
+            subject.send(completion: .finished)
         }
         
         task.resume()

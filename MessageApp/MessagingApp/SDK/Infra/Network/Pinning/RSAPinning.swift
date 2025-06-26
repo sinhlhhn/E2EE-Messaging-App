@@ -1,5 +1,5 @@
 //
-//  PinnedSessionDelegate.swift
+//  RSAPinning.swift
 //  MessagingApp
 //
 //  Created by SinhLH.AVI on 18/6/25.
@@ -9,7 +9,7 @@ import Foundation
 import CryptoKit
 import CommonCrypto
 
-final class PinnedSessionDelegate: NSObject, URLSessionDelegate {
+final class RSAPinning: PinningDelegate {
     private let pinnedKeyHashBase64 = "WHa2dTgIa0REVgQ+xPY6BMoZvJLHWWjVuzT9x9JEkQM="
     
     let rsa2048Asn1Header:[UInt8] = [
@@ -27,9 +27,7 @@ final class PinnedSessionDelegate: NSObject, URLSessionDelegate {
         return Data(hash).base64EncodedString()
     }
     
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-
+    func handleChallenge(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let serverTrust = challenge.protectionSpace.serverTrust,
               let serverCerts =  SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
