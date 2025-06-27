@@ -34,8 +34,8 @@ final class ECCPinning: PinningDelegate {
         
         
         if let keyAttributes = SecKeyCopyAttributes(serverPublicKey) as? [String: Any] {
-            print("Key type:", keyAttributes[kSecAttrKeyType as String]  ?? "Unknown")
-            print("Key size:", keyAttributes[kSecAttrKeySizeInBits as String] ?? "Unknown")
+            debugPrint("Key type:", keyAttributes[kSecAttrKeyType as String]  ?? "Unknown")
+            debugPrint("Key size:", keyAttributes[kSecAttrKeySizeInBits as String] ?? "Unknown")
         }
         
         guard let p256 = try? P256.Signing.PublicKey(x963Representation: serverPublicKeyData) else {

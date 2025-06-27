@@ -28,9 +28,9 @@ struct ProfileView: View {
             }
             
             Button {
-                viewModel.downloadImage()
+                viewModel.uploadStreamRawData()
             } label: {
-                Text("Download image")
+                Text("Upload Raw Stream data")
             }
 
         }
@@ -67,8 +67,8 @@ class ProfileViewModel {
 
     }
     
-    func downloadImage() {
-        
+    func uploadStreamRawData() {
+        service.uploadStreamRawData()
     }
 }
 
@@ -81,6 +81,7 @@ struct ImageData {
 
 protocol ProfileUseCase {
     func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, Error>
+    func uploadStreamRawData()
 //    func downloadImage()
 }
 
@@ -104,6 +105,10 @@ class ProfileService: ProfileUseCase {
             }
             .eraseToAnyPublisher()
         
+    }
+    
+    func uploadStreamRawData() {
+        network.uploadStreamRawData()
     }
     
 //    func downloadImage() -> AnyPublisher<UploadResponse, Error> {

@@ -85,4 +85,8 @@ final class NullProfileService: ProfileUseCase {
     func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, any Error> {
         Empty<UploadResponse, Error>().eraseToAnyPublisher()
     }
+    
+    func uploadStreamRawData() {
+        
+    }
 }

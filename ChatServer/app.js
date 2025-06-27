@@ -3,7 +3,7 @@ const express = require("express");
 const fs = require('fs');
 const chatRoutes = require("./routes/chat");
 const authRoutes = require("./routes/authentication");
-const imageRoutes = require("./routes/image");
+const uploadRoutes = require("./routes/upload");
 const db = require("./db/index");
 
 const app = express();
@@ -12,10 +12,10 @@ app.use(express.json());
 // Mount at base path
 app.use("/auth", authRoutes);
 app.use("/api", chatRoutes);
-app.use("/", imageRoutes);
+app.use("/", uploadRoutes);
 
 const https = require('https');
-const http = require('http');
+// const http = require('http');
 const { Server } = require('socket.io');
 
 // Load TLS credentials securely with RSA algorithm
