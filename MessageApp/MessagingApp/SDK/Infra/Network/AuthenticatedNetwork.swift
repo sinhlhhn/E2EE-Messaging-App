@@ -15,11 +15,13 @@ final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
     private let uploadNetwork: UploadTaskHTTPClient
     private let progress: AnyPublisher<Double, Error>
+    private let uploadStream: any HTTPClient<URLRequest, Void>
     
-    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>) {
+    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>, uploadStream: any HTTPClient<URLRequest, Void>) {
         self.network = network
         self.uploadNetwork = uploadNetwork
         self.progress = progress
+        self.uploadStream = uploadStream
     }
     
     //MARK: -Authentication Flow
@@ -156,37 +158,49 @@ final class AuthenticatedNetwork: NetworkModule {
         images: [MultipartImage],
         fields: [FormField] = []
     ) -> AnyPublisher<Void, Error> {
-        guard let url = URL(string: "\(localhost)upload") else {
-            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
-        }
+//        guard let url = URL(string: "\(localhost)upload") else {
+//            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+//        }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        var body = Data()
-
-        // Add fields
-        for field in fields {
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
-            body.append("\(field.value)\r\n")
-        }
-
-        // Add images
-        for image in images {
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
-            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
-            body.append(image.data)
-            body.append("\r\n")
-        }
-
-        body.append("--\(boundary)--\r\n")
+//        var request = URLRequest(url: url)
+//        request.httpMethod = "POST"
         
-        let uploadRequest = (request, body)
+        let data = images.first!.data
+        let offset = 0
+        let length = data.count
+        
+        let headers = [
+            "Content-Type": "application/offset+octet-stream",
+            "Upload-Offset": String(offset),
+            "Content-Length": String(length)
+        ]
+        
+        let request = buildRequest(url: "https://tusd.tusdemo.net/files/hlsslhshsas", method: .post, headers: headers)
+
+//        let boundary = "Boundary-\(UUID().uuidString)"
+//        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+//
+//        var body = Data()
+//
+//        // Add fields
+//        for field in fields {
+//            body.append("--\(boundary)\r\n")
+//            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
+//            body.append("\(field.value)\r\n")
+//        }
+//
+//        // Add images
+//        for image in images {
+//            body.append("--\(boundary)\r\n")
+//            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
+//            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
+//            body.append(image.data)
+//            body.append("\r\n")
+//        }
+//
+//        body.append("--\(boundary)--\r\n")
+//        
+        let uploadRequest = (request, data)
         
         let uploadTask = uploadNetwork.perform(request: uploadRequest)
             .tryMap { data, response in
@@ -212,6 +226,29 @@ final class AuthenticatedNetwork: NetworkModule {
     
     func downloadImage(url: String) -> AnyPublisher<Data, Error> {
         Empty<Data, Error>().eraseToAnyPublisher()
+    }
+    
+    var cancellables: Set<AnyCancellable> = []
+    //MARK: -Upload Stream
+    func uploadStreamRawData() {
+        
+        let data = Data(repeating: 0xAB, count: 100 * 1024 * 1024) // 100MB
+        let contentLength = data.count
+        
+        // Create streamed request
+        var request = URLRequest(url: URL(string: "\(localhost)upload/raw/backup.data")!)
+        request.httpMethod = "POST"
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")
+        
+        uploadStream.perform(request: request)
+            .sink { completion in
+                print("uploadStream completion: \(completion)")
+            } receiveValue: { response in
+                print("uploadStream response: \(response)")
+            }
+            .store(in: &cancellables)
+
     }
 
 }

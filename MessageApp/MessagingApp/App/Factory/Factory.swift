@@ -11,7 +11,6 @@ typealias DownloadTaskHTTPClient = any HTTPClient<URLRequest, HTTPURLResponse>
 
 final class Factory {
     private lazy var pinning: PinningDelegate = ECCPinning()
-    
     //MARK: -DataTask
     private lazy var sessionDelegate: URLSessionDelegate = DefaultSessionDelegate(pinning: pinning)
     private lazy var configuration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
@@ -32,8 +31,8 @@ final class Factory {
     //MARK: -DownloadTask
     
     
-    
-    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: progressDelegate.progressPublisher)
+    private lazy var uploadRawStreamClient: any HTTPClient<URLRequest, Void> = URLSessionUploadStreamTaskHTTPClient(session: uploadSession)
+    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: progressDelegate.progressPublisher, uploadStream: uploadRawStreamClient)
     
     private lazy var unauthenticatedNetwork: UnauthenticatedNetworking = UnauthenticatedNetwork(network: fetchClient)
     private var conversationViewModel: ConversationViewModel?
