@@ -17,13 +17,40 @@ router.post('/upload', upload.single('image'), (req, res) => {
 
 router.post("/upload/raw/:filename", (req, res) => {
   const filename = req.params.filename;
-  const filePath = path.join(__dirname, "../storage/uploads", filename);
-console.log("Start");
+  const uploadDir = path.join(__dirname, "../storage/uploads");
+  const filePath = path.join(uploadDir, filename);
+
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("Start");
+
   const writeStream = fs.createWriteStream(filePath);
+
   req.pipe(writeStream);
 
   writeStream.on("finish", () => {
+    console.log("✅ File upload complete");
     res.status(200).json({ message: "✅ Raw stream upload complete" });
+  });
+
+  writeStream.on("error", (err) => {
+    console.error("❌ Write stream error", err);
+    res.status(500).json({ error: "Write failed" });
+  });
+
+  req.on("aborted", () => {
+    console.warn("⚠️ Client aborted upload");
+    writeStream.destroy(); // Cleanup
+  });
+
+  req.on("close", () => {
+    console.warn("⚠️ Request closed");
+    // You can also destroy the stream here if needed
+    writeStream.destroy(); // Cleanup
+  });
+
+  req.on("error", (err) => {
+    console.error("❌ Request error", err);
+    writeStream.destroy(); // Cleanup
   });
 });
 
