@@ -158,49 +158,37 @@ final class AuthenticatedNetwork: NetworkModule {
         images: [MultipartImage],
         fields: [FormField] = []
     ) -> AnyPublisher<Void, Error> {
-//        guard let url = URL(string: "\(localhost)upload") else {
-//            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
-//        }
+        guard let url = URL(string: "\(localhost)upload") else {
+            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
         
-//        var request = URLRequest(url: url)
-//        request.httpMethod = "POST"
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
         
-        let data = images.first!.data
-        let offset = 0
-        let length = data.count
-        
-        let headers = [
-            "Content-Type": "application/offset+octet-stream",
-            "Upload-Offset": String(offset),
-            "Content-Length": String(length)
-        ]
-        
-        let request = buildRequest(url: "https://tusd.tusdemo.net/files/hlsslhshsas", method: .post, headers: headers)
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-//        let boundary = "Boundary-\(UUID().uuidString)"
-//        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-//
-//        var body = Data()
-//
-//        // Add fields
-//        for field in fields {
-//            body.append("--\(boundary)\r\n")
-//            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
-//            body.append("\(field.value)\r\n")
-//        }
-//
-//        // Add images
-//        for image in images {
-//            body.append("--\(boundary)\r\n")
-//            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
-//            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
-//            body.append(image.data)
-//            body.append("\r\n")
-//        }
-//
-//        body.append("--\(boundary)--\r\n")
-//        
-        let uploadRequest = (request, data)
+        var body = Data()
+
+        // Add fields
+        for field in fields {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
+            body.append("\(field.value)\r\n")
+        }
+
+        // Add images
+        for image in images {
+            body.append("--\(boundary)\r\n")
+            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
+            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
+            body.append(image.data)
+            body.append("\r\n")
+        }
+
+        body.append("--\(boundary)--\r\n")
+
+        let uploadRequest = (request, body)
         
         let uploadTask = uploadNetwork.perform(request: uploadRequest)
             .tryMap { data, response in
@@ -232,8 +220,13 @@ final class AuthenticatedNetwork: NetworkModule {
     //MARK: -Upload Stream
     func uploadStreamRawData() {
         
-        let data = Data(repeating: 0xAB, count: 100 * 1024 * 1024) // 100MB
-        let contentLength = data.count
+//        let data = Data(repeating: 0xAB, count: 100 * 1024 * 1024) // 100MB
+//        let contentLength = data.count
+//
+        
+        let message = "*** \(Date())\r\n"
+        guard let messageData = message.data(using: .utf8) else { return }
+        let contentLength = messageData.count * 3
         
         // Create streamed request
         var request = URLRequest(url: URL(string: "\(localhost)upload/raw/backup.data")!)

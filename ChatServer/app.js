@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require("express");
-const fs = require('fs');
 const chatRoutes = require("./routes/chat");
 const authRoutes = require("./routes/authentication");
 const uploadRoutes = require("./routes/upload");
@@ -14,6 +13,7 @@ app.use("/auth", authRoutes);
 app.use("/api", chatRoutes);
 app.use("/", uploadRoutes);
 
+const fs = require('fs');
 const https = require('https');
 // const http = require('http');
 const { Server } = require('socket.io');
@@ -34,10 +34,10 @@ const HOST = 'localhost';
 const PORT = 3000;
 
 // create https server
-const server = https.createServer(tlsOptions, app)
+const server = https.createServer(tlsOptions, app);
 
 // create http server
-// const server = http.createServer(app)
+// const server = http.createServer(app);
 
 const io = new Server(server);
 
