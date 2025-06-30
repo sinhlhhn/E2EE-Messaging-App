@@ -11,16 +11,19 @@ import Combine
 
 final class URLSessionUploadStreamTaskHTTPClient: HTTPClient {
     private let session: URLSession
+    private let didCreateTask: (Int) -> Void
     
-    init(session: URLSession) {
+    init(session: URLSession, didCreateTask: @escaping (Int) -> Void) {
         self.session = session
+        self.didCreateTask = didCreateTask
     }
     
     func perform(request: URLRequest) -> AnyPublisher<Void, Error> {
         debugPrint("☁️ CURL: \(request.curlString())")
         let subject: PassthroughSubject<Void, Error> = .init()
-        session.uploadTask(withStreamedRequest: request)
         let task = session.uploadTask(withStreamedRequest: request)
+        
+        didCreateTask(task.taskIdentifier)
         
         task.resume()
         return subject.eraseToAnyPublisher()
