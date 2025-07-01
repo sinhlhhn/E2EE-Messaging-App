@@ -109,6 +109,12 @@ class ProfileService: ProfileUseCase {
     
     func uploadStreamRawData() {
         network.uploadStreamRawData()
+            .sink { completion in
+                
+            } receiveValue: { _ in
+                
+            }
+            .store(in: &cancellables)
     }
     
 //    func downloadImage() -> AnyPublisher<UploadResponse, Error> {
