@@ -23,6 +23,6 @@ protocol NetworkModule {
     func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error>
     
     func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<Void, Error>
-    func uploadStreamRawData()
+    func uploadStreamRawData() -> AnyPublisher<Void, any Error>
     func downloadImage(url: String) -> AnyPublisher<Data, Error>
 }

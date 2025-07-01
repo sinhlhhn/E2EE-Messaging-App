@@ -216,16 +216,15 @@ final class AuthenticatedNetwork: NetworkModule {
         Empty<Data, Error>().eraseToAnyPublisher()
     }
     
-    var cancellables: Set<AnyCancellable> = []
     //MARK: -Upload Stream
-    func uploadStreamRawData() {
-        
+    func uploadStreamRawData() -> AnyPublisher<Void, any Error> {
 //        let data = Data(repeating: 0xAB, count: 100 * 1024 * 1024) // 100MB
 //        let contentLength = data.count
-//
         
         let message = "*** \(Date())\r\n"
-        guard let messageData = message.data(using: .utf8) else { return }
+        guard let messageData = message.data(using: .utf8) else {
+            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
         let contentLength = messageData.count * 3
         
         // Create streamed request
@@ -234,14 +233,7 @@ final class AuthenticatedNetwork: NetworkModule {
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")
         
-        uploadStream.perform(request: request)
-            .sink { completion in
-                print("uploadStream completion: \(completion)")
-            } receiveValue: { response in
-                print("uploadStream response: \(response)")
-            }
-            .store(in: &cancellables)
-
+        return uploadStream.perform(request: request)
     }
 
 }
