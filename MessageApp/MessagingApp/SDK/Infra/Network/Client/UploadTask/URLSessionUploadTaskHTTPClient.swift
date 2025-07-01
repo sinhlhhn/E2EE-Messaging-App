@@ -30,6 +30,10 @@ final class URLSessionUploadTaskHTTPClient: HTTPClient {
         }
         
         task.resume()
-        return subject.eraseToAnyPublisher()
+        return subject
+            .handleEvents(receiveCancel: {
+                task.cancel()
+            })
+            .eraseToAnyPublisher()
     }
 }
