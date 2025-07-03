@@ -15,13 +15,13 @@ final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
     private let uploadNetwork: UploadTaskHTTPClient
     private let progress: AnyPublisher<Double, Error>
-    private let uploadStream: any HTTPClient<URLRequest, Void>
+    private let streamUpload: StreamUploadTaskHTTPClient
     
-    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>, uploadStream: any HTTPClient<URLRequest, Void>) {
+    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>, streamUpload: StreamUploadTaskHTTPClient) {
         self.network = network
         self.uploadNetwork = uploadNetwork
         self.progress = progress
-        self.uploadStream = uploadStream
+        self.streamUpload = streamUpload
     }
     
     //MARK: -Authentication Flow
@@ -153,6 +153,10 @@ final class AuthenticatedNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
     
+    func cancelRequest() {
+        
+    }
+    
     //MARK: -Image
     func uploadImage(
         images: [MultipartImage],
@@ -190,7 +194,7 @@ final class AuthenticatedNetwork: NetworkModule {
 
         let uploadRequest = (request, body)
         
-        let uploadTask = uploadNetwork.perform(request: uploadRequest)
+        let uploadTask = uploadNetwork.upload(request: uploadRequest)
             .tryMap { data, response in
                 guard response.statusCode == 200 else {
                     let error = URLError(.badServerResponse)
@@ -233,7 +237,9 @@ final class AuthenticatedNetwork: NetworkModule {
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")
         
-        return uploadStream.perform(request: request)
+        return streamUpload.upload(request: request)
+            .map { _ in () }
+            .eraseToAnyPublisher()
     }
 
 }

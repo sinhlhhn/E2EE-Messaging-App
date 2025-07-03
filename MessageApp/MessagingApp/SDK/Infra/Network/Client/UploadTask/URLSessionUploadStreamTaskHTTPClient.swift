@@ -9,7 +9,7 @@
 import Foundation
 import Combine
 
-final class URLSessionUploadStreamTaskHTTPClient: HTTPClient {
+final class URLSessionStreamUploadTaskHTTPClient: StreamUploadTaskHTTPClient {
     private let session: URLSession
     private let didCreateTask: (Int) -> Void
     
@@ -18,7 +18,7 @@ final class URLSessionUploadStreamTaskHTTPClient: HTTPClient {
         self.didCreateTask = didCreateTask
     }
     
-    func perform(request: URLRequest) -> AnyPublisher<Void, Error> {
+    func upload(request: URLRequest) -> AnyPublisher<Void, Error> {
         debugPrint("☁️ CURL: \(request.curlString())")
         let subject: PassthroughSubject<Void, Error> = .init()
         let task = session.uploadTask(withStreamedRequest: request)

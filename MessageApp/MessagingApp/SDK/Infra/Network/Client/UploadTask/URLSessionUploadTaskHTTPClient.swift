@@ -8,14 +8,14 @@
 import Foundation
 import Combine
 
-final class URLSessionUploadTaskHTTPClient: HTTPClient {
+final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
     private let session: URLSession
     
     init(session: URLSession) {
         self.session = session
     }
     
-    func perform(request: (URLRequest, Data)) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
+    func upload(request: (URLRequest, Data)) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
         let (request, data) = request
         debugPrint("☁️ CURL: \(request.curlString())")
         let subject: PassthroughSubject<(Data?, HTTPURLResponse), Error> = .init()

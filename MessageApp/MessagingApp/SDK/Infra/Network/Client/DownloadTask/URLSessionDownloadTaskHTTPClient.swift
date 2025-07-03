@@ -8,14 +8,14 @@
 import Foundation
 import Combine
 
-final class URLSessionDownloadTaskHTTPClient: HTTPClient {
+final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient {
     private let session: URLSession
     
     init(session: URLSession = .shared) {
         self.session = session
     }
     
-    func perform(request: URLRequest) -> AnyPublisher<HTTPURLResponse, any Error> {
+    func download(request: URLRequest) -> AnyPublisher<HTTPURLResponse, any Error> {
         debugPrint("☁️ CURL: \(request.curlString())")
         let subject: PassthroughSubject<HTTPURLResponse, Error> = .init()
         let task = session.downloadTask(with: request) { url, response, error in

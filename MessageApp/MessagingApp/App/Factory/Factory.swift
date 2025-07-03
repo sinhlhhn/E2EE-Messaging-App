@@ -6,8 +6,6 @@
 import SwiftUI
 
 typealias DataTaskHTTPClient = any HTTPClient<URLRequest, (Data, HTTPURLResponse)>
-typealias UploadTaskHTTPClient = any HTTPClient<(URLRequest, Data), (Data?, HTTPURLResponse)>
-typealias DownloadTaskHTTPClient = any HTTPClient<URLRequest, HTTPURLResponse>
 
 final class Factory {
     private lazy var pinning: PinningDelegate = ECCPinning()
@@ -19,22 +17,29 @@ final class Factory {
     
     private lazy var retryAuthenticatedClient: DataTaskHTTPClient = RetryAuthenticatedHTTPClient(client: fetchClient)
     private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: retryAuthenticatedClient, keyStore: keyStore)
-    private lazy var authenticatedClient: DataTaskHTTPClient = AuthenticatedHTTPClient(client: fetchClient, tokenProvider: tokenProvider)
-    private lazy var uploadTaskClient: UploadTaskHTTPClient = AuthenticatedUploadHTTPClient(client: uploadClient, tokenProvider: tokenProvider)
     
     //MARK: -UploadTask
     private lazy var progressDelegate = UploadSessionDelegate(pinning: pinning)
     private lazy var uploadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
     private lazy var uploadSession = URLSession(configuration: uploadConfiguration, delegate: progressDelegate, delegateQueue: nil)
-    private lazy var uploadClient: UploadTaskHTTPClient = URLSessionUploadTaskHTTPClient(session: uploadSession)
+    private lazy var uploadClient = URLSessionUploadTaskHTTPClient(session: uploadSession)
     
     //MARK: -StreamUploadTask
     private lazy var streamUploadDelegate = StreamUploadSessionDelegate(pinning: pinning)
     private lazy var streamUploadSession = URLSession(configuration: .ephemeral, delegate: streamUploadDelegate, delegateQueue: nil)
-    private lazy var uploadRawStreamClient: any HTTPClient<URLRequest, Void> = URLSessionUploadStreamTaskHTTPClient(session: streamUploadSession, didCreateTask: streamUploadDelegate.createStream)
-    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: uploadTaskClient, progress: progressDelegate.progressPublisher, uploadStream: uploadRawStreamClient)
+    private lazy var streamUploadClient = URLSessionStreamUploadTaskHTTPClient(session: streamUploadSession, didCreateTask: streamUploadDelegate.createStream)
     
+    //MARK: -DownloadTask
+    private lazy var downloadClient = URLSessionDownloadTaskHTTPClient(session: .shared)
+    
+    //MARK: -AuthenticatedClient
+    private lazy var authenticatedClient = AuthenticatedHTTPClient(client: fetchClient, uploadClient: uploadClient, streamUploadClient: streamUploadClient, downloadClient: downloadClient, tokenProvider: tokenProvider)
+    private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(network: authenticatedClient, uploadNetwork: authenticatedClient, progress: progressDelegate.progressPublisher, streamUpload: authenticatedClient)
+    
+    //MARK: -UnauthenticatedClient
     private lazy var unauthenticatedNetwork: UnauthenticatedNetworking = UnauthenticatedNetwork(network: fetchClient)
+    
+    
     private var conversationViewModel: ConversationViewModel?
     
     private lazy var keyStore = UserDefaultsKeyStoreService()
