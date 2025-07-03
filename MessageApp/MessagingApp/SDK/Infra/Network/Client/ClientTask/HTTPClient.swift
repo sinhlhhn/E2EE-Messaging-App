@@ -21,4 +21,16 @@ protocol HTTPClient<Request, Response> {
     func perform(request: Request) -> AnyPublisher<Response, Error>
 }
 
+protocol UploadTaskHTTPClient {
+    func upload(request: (URLRequest, Data)) -> AnyPublisher<(Data?, HTTPURLResponse), Error>
+}
+
+protocol StreamUploadTaskHTTPClient {
+    func upload(request: URLRequest) -> AnyPublisher<Void, Error>
+}
+
+protocol DownloadTaskHTTPClient {
+    func download(request: URLRequest) -> AnyPublisher<HTTPURLResponse, any Error>
+}
+
 
