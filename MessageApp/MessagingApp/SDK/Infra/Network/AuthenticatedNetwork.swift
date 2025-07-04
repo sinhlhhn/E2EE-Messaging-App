@@ -154,7 +154,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func cancelRequest() {
-        
+        network.can
     }
     
     //MARK: -Image

@@ -23,6 +23,9 @@ protocol HTTPClient<Request, Response> {
 
 protocol UploadTaskHTTPClient {
     func upload(request: (URLRequest, Data)) -> AnyPublisher<(Data?, HTTPURLResponse), Error>
+    func suspend(id: Int)
+    func cancel(id: Int)
+    func resume(id: Int) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error>
 }
 
 protocol StreamUploadTaskHTTPClient {

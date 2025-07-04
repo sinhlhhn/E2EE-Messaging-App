@@ -115,4 +115,20 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
             }
             .eraseToAnyPublisher()
     }
+    
+    func suspend(id: Int) {
+        uploadClient.suspend(id: id)
+    }
+    
+    func cancel(id: Int) {
+        uploadClient.cancel(id: id)
+    }
+    
+    func resume(id: Int) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
+        uploadClient.resume(id: id)
+    }
+}
+
+extension AuthenticatedHTTPClient {
+    
 }
