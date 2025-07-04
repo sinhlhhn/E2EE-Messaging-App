@@ -73,6 +73,7 @@ class ProfileViewModel {
 }
 
 struct ImageData {
+    let id = UUID()
     let image: Data
     let userName: String
     let fileName: String
@@ -105,6 +106,10 @@ class ProfileService: ProfileUseCase {
             }
             .eraseToAnyPublisher()
         
+    }
+    
+    func cancel(image: ImageData) {
+        network.cancelRequest()
     }
     
     func uploadStreamRawData() {
