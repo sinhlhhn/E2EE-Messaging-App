@@ -13,11 +13,16 @@ let localhost = "https://localhost:3000/"
 
 final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
-    private let uploadNetwork: UploadTaskHTTPClient
+    private let uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient
     private let progress: AnyPublisher<Double, Error>
     private let streamUpload: StreamUploadTaskHTTPClient
     
-    init(network: DataTaskHTTPClient, uploadNetwork: UploadTaskHTTPClient, progress: AnyPublisher<Double, Error>, streamUpload: StreamUploadTaskHTTPClient) {
+    init(
+        network: DataTaskHTTPClient,
+        uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient,
+        progress: AnyPublisher<Double, Error>,
+        streamUpload: StreamUploadTaskHTTPClient
+    ) {
         self.network = network
         self.uploadNetwork = uploadNetwork
         self.progress = progress
@@ -154,7 +159,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func cancelRequest() {
-        network.can
+//        uploadNetwork.cancel(id: <#T##Int#>)
     }
     
     //MARK: -Image

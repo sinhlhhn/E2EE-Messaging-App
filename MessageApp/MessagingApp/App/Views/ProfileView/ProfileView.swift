@@ -81,7 +81,7 @@ struct ImageData {
 }
 
 protocol ProfileUseCase {
-    func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, Error>
+    func uploadImage(image: ImageData) -> AnyPublisher<Void, Error>
     func uploadStreamRawData()
 //    func downloadImage()
 }
@@ -96,13 +96,13 @@ class ProfileService: ProfileUseCase {
         self.network = network
     }
     
-    func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, Error> {
+    func uploadImage(image: ImageData) -> AnyPublisher<Void, Error> {
         let images: [MultipartImage] = [
             .init(data: image.image, fieldName: image.fieldName, fileName: image.fileName, mimeType: "jpg")
         ]
         return network.uploadImage(images: images, fields: [])
             .map { _ in
-                UploadResponse.progress(percentage: 0)
+                Void()
             }
             .eraseToAnyPublisher()
         

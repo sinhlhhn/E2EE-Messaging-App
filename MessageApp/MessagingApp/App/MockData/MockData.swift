@@ -82,8 +82,8 @@ final class NullLogOutUseCase: LogOutUseCase {
 }
 
 final class NullProfileService: ProfileUseCase {
-    func uploadImage(image: ImageData) -> AnyPublisher<UploadResponse, any Error> {
-        Empty<UploadResponse, Error>().eraseToAnyPublisher()
+    func uploadImage(image: ImageData) -> AnyPublisher<Void, any Error> {
+        Empty<Void, Error>().eraseToAnyPublisher()
     }
     
     func uploadStreamRawData() {

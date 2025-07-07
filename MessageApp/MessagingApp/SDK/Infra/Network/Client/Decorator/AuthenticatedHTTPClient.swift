@@ -8,24 +8,30 @@
 import Foundation
 import Combine
 
-final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadTaskHTTPClient, StreamUploadTaskHTTPClient {
+final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadTaskHTTPClient, StreamUploadTaskHTTPClient, TaskCancelHTTPClient {
     private let client: DataTaskHTTPClient
     private let uploadClient: UploadTaskHTTPClient
+    private let cancelUploadClient: TaskCancelHTTPClient
     private let streamUploadClient: StreamUploadTaskHTTPClient
     private let downloadClient: DownloadTaskHTTPClient
+    private let cancelDownloadClient: TaskCancelHTTPClient
     private let tokenProvider: TokenProvider
     
     init(
         client: DataTaskHTTPClient,
         uploadClient: UploadTaskHTTPClient,
+        cancelUploadClient: TaskCancelHTTPClient,
         streamUploadClient: StreamUploadTaskHTTPClient,
         downloadClient: DownloadTaskHTTPClient,
+        cancelDownloadClient: TaskCancelHTTPClient,
         tokenProvider: TokenProvider
     ) {
         self.client = client
         self.uploadClient = uploadClient
+        self.cancelUploadClient = cancelUploadClient
         self.streamUploadClient = streamUploadClient
         self.downloadClient = downloadClient
+        self.cancelDownloadClient = cancelDownloadClient
         self.tokenProvider = tokenProvider
     }
     
@@ -116,16 +122,22 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
             .eraseToAnyPublisher()
     }
     
-    func suspend(id: Int) {
-        uploadClient.suspend(id: id)
+    func suspend(url: URL) {
+        cancelUploadClient.suspend(id: id)
+        cancelDownloadClient.suspend(id: id)
     }
     
-    func cancel(id: Int) {
-        uploadClient.cancel(id: id)
+    func cancel(url: URL) {
+        cancelUploadClient.cancel(id: id)
+        cancelDownloadClient.cancel(id: id)
     }
     
-    func resume(id: Int) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
-        uploadClient.resume(id: id)
+    func resumeUpload(id: Int) -> AnyPublisher<(Data?, HTTPURLResponse), any Error> {
+        uploadClient.resumeUpload(id: id)
+    }
+    
+    func resumeDownload(id: Int) -> AnyPublisher<HTTPURLResponse, any Error> {
+        downloadClient.resumeDownload(id: id)
     }
 }
 

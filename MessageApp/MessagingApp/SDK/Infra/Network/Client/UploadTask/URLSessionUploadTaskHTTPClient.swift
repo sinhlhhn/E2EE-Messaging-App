@@ -8,22 +8,29 @@
 import Foundation
 import Combine
 
-final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
+final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTPClient {
+    
     private let session: URLSession
     
     private let queue: DispatchQueue = .init(label: "com.slh.URLSessionUploadTaskHTTPClient")
-    private var taskDictionary: [Int: URLSessionUploadTask] = [:]
-    private var taskSubjectDictionary: [Int: PassthroughSubject<(Data?, HTTPURLResponse), Error>] = [:]
-    private var resumeDataDictionary: [Int: Data] = [:]
+    private var taskDictionary: [URL?: URLSessionUploadTask] = [:]
+    private var taskSubjectDictionary: [URL?: PassthroughSubject<UploadResponse, Error>] = [:]
+    private var resumeDataDictionary: [URL?: Data] = [:]
     
     init(session: URLSession) {
         self.session = session
     }
     
-    func upload(request: (URLRequest, Data)) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
+    func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, any Error> {
         let (request, data) = request
         debugPrint("☁️ CURL: \(request.curlString())")
-        let subject: PassthroughSubject<(Data?, HTTPURLResponse), Error> = .init()
+        let subject: PassthroughSubject<UploadResponse, Error> = .init()
+        
+        guard let url = request.url else {
+            subject.send(completion: .failure(InvalidHTTPResponseError()))
+            
+        }
+        
         let task = session.uploadTask(with: request, from: data) { data, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
                 subject.send(completion: .failure(InvalidHTTPResponseError()))
@@ -34,8 +41,8 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
             subject.send(completion: .finished)
         }
         
-        updateTask(task, id: task.taskIdentifier)
-        updateTaskSubject(subject, id: task.taskIdentifier)
+        updateTask(task, url: url)
+        updateTaskSubject(subject, url: url)
         
         task.resume()
         return subject
@@ -45,29 +52,29 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
             .eraseToAnyPublisher()
     }
     
-    func suspend(id: Int) {
-        let task = getTask(id: id)
+    func suspend(url: URL) {
+        let task = getTask(url: url)
         task?.suspend()
     }
     
-    func cancel(id: Int) {
-        let task = getTask(id: id)
+    func cancel(url: URL) {
+        let task = getTask(url: url)
         task?.cancel { [weak self] data in
-            self?.resumeDataDictionary[id] = data
+            self?.resumeDataDictionary[url] = data
         }
     }
     
-    func resume(id: Int) -> AnyPublisher<(Optional<Data>, HTTPURLResponse), any Error> {
-        guard let data = getResumeData(id: id) else {
-            debugPrint("Cannot resume task with ID \(id): no resume data found.")
-            return Empty<(Optional<Data>, HTTPURLResponse), any Error>().eraseToAnyPublisher()
+    func resumeUpload(url: URL) -> AnyPublisher<UploadResponse, any Error> {
+        guard let data = getResumeData(url: url) else {
+            debugPrint("Cannot resume task with \(url): no resume data found.")
+            return Empty<UploadResponse, any Error>().eraseToAnyPublisher()
         }
-        guard let subject = getTaskSubject(id: id) else {
-            debugPrint("Cannot resume task with ID \(id): no task subject found.")
-            return Empty<(Optional<Data>, HTTPURLResponse), any Error>().eraseToAnyPublisher()
+        guard let subject = getTaskSubject(url: url) else {
+            debugPrint("Cannot resume task with \(url): no task subject found.")
+            return Empty<UploadResponse, any Error>().eraseToAnyPublisher()
         }
         
-        debugPrint("Resume task with ID \(id)")
+        debugPrint("Resume task with \(url)")
         
         let task = session.uploadTask(withResumeData: data) { data, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -79,8 +86,8 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
             subject.send(completion: .finished)
         }
         
-        updateTask(task, id: task.taskIdentifier)
-        updateTaskSubject(subject, id: task.taskIdentifier)
+        updateTask(task, url: url)
+        updateTaskSubject(subject, url: url)
         
         task.resume()
         return subject
@@ -90,33 +97,33 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient {
             .eraseToAnyPublisher()
     }
     
-    private func updateTask(_ task: URLSessionUploadTask?, id: Int) {
+    private func updateTask(_ task: URLSessionUploadTask?, url: URL?) {
         queue.async(flags: .barrier) {
-            self.taskDictionary[id] = task
+            self.taskDictionary[url] = task
         }
     }
     
-    private func getTask(id: Int) -> URLSessionUploadTask? {
+    private func getTask(url: URL) -> URLSessionUploadTask? {
         queue.sync {
-            self.taskDictionary[id]
+            self.taskDictionary[url]
         }
     }
     
-    private func getResumeData(id: Int) -> Data? {
+    private func getResumeData(url: URL) -> Data? {
         queue.sync {
-            self.resumeDataDictionary[id]
+            self.resumeDataDictionary[url]
         }
     }
     
-    private func updateTaskSubject(_ subject: PassthroughSubject<(Data?, HTTPURLResponse), Error>, id: Int) {
+    private func updateTaskSubject(_ subject: PassthroughSubject<UploadResponse, Error>, url: URL?) {
         queue.async(flags: .barrier) {
-            self.taskSubjectDictionary[id] = subject
+            self.taskSubjectDictionary[url] = subject
         }
     }
     
-    private func getTaskSubject(id: Int) -> PassthroughSubject<(Data?, HTTPURLResponse), Error>? {
+    private func getTaskSubject(url: URL) -> PassthroughSubject<UploadResponse, Error>? {
         queue.sync {
-            self.taskSubjectDictionary[id]
+            self.taskSubjectDictionary[url]
         }
     }
 }
