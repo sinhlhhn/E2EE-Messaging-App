@@ -27,8 +27,7 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTP
         let subject: PassthroughSubject<UploadResponse, Error> = .init()
         
         guard let url = request.url else {
-            subject.send(completion: .failure(InvalidHTTPResponseError()))
-            
+            return Fail(error: NSError(domain: "cannot create url", code: 0)).eraseToAnyPublisher()
         }
         
         let task = session.uploadTask(with: request, from: data) { data, response, error in

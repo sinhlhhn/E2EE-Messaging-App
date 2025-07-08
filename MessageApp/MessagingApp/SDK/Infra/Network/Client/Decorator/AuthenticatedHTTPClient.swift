@@ -123,21 +123,21 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
     }
     
     func suspend(url: URL) {
-        cancelUploadClient.suspend(id: id)
-        cancelDownloadClient.suspend(id: id)
+        cancelUploadClient.suspend(url: url)
+        cancelDownloadClient.suspend(url: url)
     }
     
     func cancel(url: URL) {
-        cancelUploadClient.cancel(id: id)
-        cancelDownloadClient.cancel(id: id)
+        cancelUploadClient.cancel(url: url)
+        cancelDownloadClient.cancel(url: url)
     }
     
-    func resumeUpload(id: Int) -> AnyPublisher<(Data?, HTTPURLResponse), any Error> {
-        uploadClient.resumeUpload(id: id)
+    func resumeUpload(url: URL) -> AnyPublisher<(Data?, HTTPURLResponse), any Error> {
+        uploadClient.resumeUpload(url: url)
     }
     
-    func resumeDownload(id: Int) -> AnyPublisher<HTTPURLResponse, any Error> {
-        downloadClient.resumeDownload(id: id)
+    func resumeDownload(url: URL) -> AnyPublisher<HTTPURLResponse, any Error> {
+        downloadClient.resumeDownload(url: url)
     }
 }
 

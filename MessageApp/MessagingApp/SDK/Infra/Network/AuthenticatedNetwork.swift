@@ -159,7 +159,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func cancelRequest() {
-//        uploadNetwork.cancel(id: <#T##Int#>)
+//        uploadNetwork.cancel(url: <#T##URL#>)
     }
     
     //MARK: -Image
