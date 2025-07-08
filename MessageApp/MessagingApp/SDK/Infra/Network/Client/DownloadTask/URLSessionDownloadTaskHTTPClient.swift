@@ -12,9 +12,9 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
     private let session: URLSession
     
     private let queue: DispatchQueue = .init(label: "com.slh.URLSessionDownloadTaskHTTPClient")
-    private var taskDictionary: [Int: URLSessionDownloadTask] = [:]
-    private var taskSubjectDictionary: [Int: PassthroughSubject<HTTPURLResponse, Error>] = [:]
-    private var resumeDataDictionary: [Int: Data] = [:]
+    private var taskDictionary: [URL?: URLSessionDownloadTask] = [:]
+    private var taskSubjectDictionary: [URL?: PassthroughSubject<HTTPURLResponse, Error>] = [:]
+    private var resumeDataDictionary: [URL?: Data] = [:]
     
     init(session: URLSession = .shared) {
         self.session = session
@@ -23,6 +23,11 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
     func download(request: URLRequest) -> AnyPublisher<HTTPURLResponse, any Error> {
         debugPrint("☁️ CURL: \(request.curlString())")
         let subject: PassthroughSubject<HTTPURLResponse, Error> = .init()
+        
+        guard let url = request.url else {
+            return Fail(error: NSError(domain: "cannot create url", code: 0)).eraseToAnyPublisher()
+        }
+        
         let task = session.downloadTask(with: request) { url, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
                 subject.send(completion: .failure(InvalidHTTPResponseError()))
@@ -32,6 +37,9 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
             subject.send(httpResponse)
             subject.send(completion: .finished)
         }
+        
+        updateTask(task, url: url)
+        updateTaskSubject(subject, url: url)
         
         task.resume()
         return subject
@@ -49,21 +57,21 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
     func cancel(url: URL) {
         let task = getTask(url: url)
         task?.cancel { [weak self] data in
-            self?.resumeDataDictionary[id] = data
+            self?.resumeDataDictionary[url] = data
         }
     }
     
-    func resumeDownload(id: Int) -> AnyPublisher<HTTPURLResponse, any Error> {
-        guard let data = getResumeData(id: id) else {
-            debugPrint("Cannot resume task with ID \(id): no resume data found.")
+    func resumeDownload(url: URL) -> AnyPublisher<HTTPURLResponse, any Error> {
+        guard let data = getResumeData(url: url) else {
+            debugPrint("Cannot resume task with url \(url): no resume data found.")
             return Empty<HTTPURLResponse, any Error>().eraseToAnyPublisher()
         }
-        guard let subject = getTaskSubject(id: id) else {
-            debugPrint("Cannot resume task with ID \(id): no task subject found.")
+        guard let subject = getTaskSubject(url: url) else {
+            debugPrint("Cannot resume task with url \(url): no task subject found.")
             return Empty<HTTPURLResponse, any Error>().eraseToAnyPublisher()
         }
         
-        debugPrint("Resume task with ID \(id)")
+        debugPrint("Resume task with url \(url)")
         
         let task = session.downloadTask(withResumeData: data) { url, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -75,8 +83,8 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
             subject.send(completion: .finished)
         }
         
-        updateTask(task, id: task.taskIdentifier)
-        updateTaskSubject(subject, id: task.taskIdentifier)
+        updateTask(task, url: url)
+        updateTaskSubject(subject, url: url)
         
         task.resume()
         return subject
@@ -86,7 +94,7 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
             .eraseToAnyPublisher()
     }
     
-    private func updateTask(_ task: URLSessionDownloadTask?, id: Int) {
+    private func updateTask(_ task: URLSessionDownloadTask?, url: URL) {
         queue.async(flags: .barrier) {
             self.taskDictionary[url] = task
         }
@@ -98,21 +106,21 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
         }
     }
     
-    private func getResumeData(id: Int) -> Data? {
+    private func getResumeData(url: URL) -> Data? {
         queue.sync {
-            self.resumeDataDictionary[id]
+            self.resumeDataDictionary[url]
         }
     }
     
-    private func updateTaskSubject(_ subject: PassthroughSubject<HTTPURLResponse, Error>, id: Int) {
+    private func updateTaskSubject(_ subject: PassthroughSubject<HTTPURLResponse, Error>, url: URL) {
         queue.async(flags: .barrier) {
-            self.taskSubjectDictionary[id] = subject
+            self.taskSubjectDictionary[url] = subject
         }
     }
     
-    private func getTaskSubject(id: Int) -> PassthroughSubject<HTTPURLResponse, Error>? {
+    private func getTaskSubject(url: URL) -> PassthroughSubject<HTTPURLResponse, Error>? {
         queue.sync {
-            self.taskSubjectDictionary[id]
+            self.taskSubjectDictionary[url]
         }
     }
 }
