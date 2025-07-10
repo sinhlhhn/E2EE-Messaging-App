@@ -3,6 +3,7 @@ const express = require("express");
 const chatRoutes = require("./routes/chat");
 const authRoutes = require("./routes/authentication");
 const uploadRoutes = require("./routes/upload");
+const downloadRoutes = require("./routes/download");
 const db = require("./db/index");
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(express.json());
 app.use("/auth", authRoutes);
 app.use("/api", chatRoutes);
 app.use("/", uploadRoutes);
+app.use("/", downloadRoutes);
 
 const fs = require('fs');
 const https = require('https');
