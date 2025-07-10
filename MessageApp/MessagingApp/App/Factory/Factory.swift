@@ -30,7 +30,9 @@ final class Factory {
     private lazy var streamUploadClient = URLSessionStreamUploadTaskHTTPClient(session: streamUploadSession, didCreateTask: streamUploadDelegate.createStream)
     
     //MARK: -DownloadTask
-    private lazy var downloadClient = URLSessionDownloadTaskHTTPClient(session: .shared)
+    private lazy var downloadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
+    private lazy var downloadSession = URLSession(configuration: downloadConfiguration, delegate: sessionDelegate, delegateQueue: nil)
+    private lazy var downloadClient = URLSessionDownloadTaskHTTPClient(session: downloadSession)
     
     //MARK: -AuthenticatedClient
     private lazy var authenticatedClient = AuthenticatedHTTPClient(
@@ -45,6 +47,7 @@ final class Factory {
     private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(
         network: authenticatedClient,
         uploadNetwork: authenticatedClient,
+        downloadNetwork: downloadClient,
         progress: progressDelegate.progressPublisher,
         streamUpload: authenticatedClient
     )

@@ -33,8 +33,9 @@ protocol UploadTaskHTTPClient {
 }
 
 protocol DownloadTaskHTTPClient {
-    func download(request: URLRequest) -> AnyPublisher<HTTPURLResponse, any Error>
-    func resumeDownload(url: URL) -> AnyPublisher<HTTPURLResponse, any Error>
+    typealias DownloadResponse = (URL?, HTTPURLResponse)
+    func download(request: URLRequest) -> AnyPublisher<DownloadResponse, any Error>
+    func resumeDownload(url: URL) -> AnyPublisher<DownloadResponse, any Error>
 }
 
 protocol StreamUploadTaskHTTPClient {

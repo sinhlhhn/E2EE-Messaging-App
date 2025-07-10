@@ -14,17 +14,20 @@ let localhost = "https://localhost:3000/"
 final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
     private let uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient
+    private let downloadNetwork: DownloadTaskHTTPClient & TaskCancelHTTPClient
     private let progress: AnyPublisher<Double, Error>
     private let streamUpload: StreamUploadTaskHTTPClient
     
     init(
         network: DataTaskHTTPClient,
         uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient,
+        downloadNetwork: DownloadTaskHTTPClient & TaskCancelHTTPClient,
         progress: AnyPublisher<Double, Error>,
         streamUpload: StreamUploadTaskHTTPClient
     ) {
         self.network = network
         self.uploadNetwork = uploadNetwork
+        self.downloadNetwork = downloadNetwork
         self.progress = progress
         self.streamUpload = streamUpload
     }
@@ -221,8 +224,26 @@ final class AuthenticatedNetwork: NetworkModule {
         .eraseToAnyPublisher()
     }
     
-    func downloadImage(url: String) -> AnyPublisher<Data, Error> {
-        Empty<Data, Error>().eraseToAnyPublisher()
+    func downloadData(url: String) -> AnyPublisher<URL, Error> {
+        guard let url = URL(string: "\(localhost)\(url)") else {
+            return Fail<URL, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
+        
+        let request = URLRequest(url: url)
+        
+        return downloadNetwork.download(request: request)
+            .tryMap { url, response in
+                guard response.statusCode == 200 else {
+                    let error = URLError(.badServerResponse)
+                    throw error
+                }
+                guard let url = url else {
+                    throw NSError(domain: "ivalid url", code: 0, userInfo: nil)
+                }
+                return url
+            }
+            .print("--------------- download ")
+            .eraseToAnyPublisher()
     }
     
     //MARK: -Upload Stream

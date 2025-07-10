@@ -22,6 +22,12 @@ struct ProfileView: View {
                 .background(Color.gray)
                 .clipShape(Circle())
             Button {
+                viewModel.downloadData()
+            } label: {
+                Text("Download data")
+            }
+            
+            Button {
                 viewModel.uploadImage()
             } label: {
                 Text("Upload image")
@@ -44,6 +50,10 @@ class ProfileViewModel {
     
     init(service: ProfileUseCase) {
         self.service = service
+    }
+    
+    func downloadData() {
+        service.downloadImage()
     }
     
     func uploadImage() {
@@ -83,7 +93,7 @@ struct ImageData {
 protocol ProfileUseCase {
     func uploadImage(image: ImageData) -> AnyPublisher<Void, Error>
     func uploadStreamRawData()
-//    func downloadImage()
+    func downloadImage()
 }
 
 import Combine
@@ -122,9 +132,34 @@ class ProfileService: ProfileUseCase {
             .store(in: &cancellables)
     }
     
-//    func downloadImage() -> AnyPublisher<UploadResponse, Error> {
-//        
-//    }
+    func downloadImage() {
+        network.downloadData(url: "download/1752128810223-708544664.jpg")
+            .sink { completion in
+                switch completion {
+                case .finished: print("downloadImage finish")
+                case .failure(let error): print("downloadImage \(error.localizedDescription)")
+                }
+                
+            } receiveValue: { url in
+                print("downloadImage url \(url)")
+            }
+            .store(in: &cancellables)
+
+    }
+    
+    func downloadData() {
+        network.downloadData(url: "download/backup.data")
+            .sink { completion in
+                switch completion {
+                case .finished: print("downloadData finish")
+                case .failure(let error): print("downloadData \(error.localizedDescription)")
+                }
+                
+            } receiveValue: { url in
+                print("downloadData url \(url)")
+            }
+            .store(in: &cancellables)
+    }
 }
 
 #Preview {
