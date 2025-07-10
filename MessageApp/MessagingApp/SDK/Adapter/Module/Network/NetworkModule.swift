@@ -25,5 +25,5 @@ protocol NetworkModule {
     func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<Void, Error>
     func uploadStreamRawData() -> AnyPublisher<Void, any Error>
     func cancelRequest()
-    func downloadImage(url: String) -> AnyPublisher<Data, Error>
+    func downloadData(url: String) -> AnyPublisher<URL, Error>
 }
