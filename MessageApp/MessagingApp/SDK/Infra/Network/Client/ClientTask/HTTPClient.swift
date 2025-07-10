@@ -8,11 +8,6 @@
 import Foundation
 import Combine
 
-//enum UploadResponse {
-//    case progress(percentage: Double)
-//    case response(response: HTTPURLResponse, data: Data?)
-//}
-
 struct InvalidHTTPResponseError: Error {}
 
 protocol HTTPClient<Request, Response> {
@@ -26,14 +21,22 @@ protocol TaskCancelHTTPClient {
     func suspend(url: URL)
 }
 
+enum UploadResponse: Equatable {
+    case uploaded(data: Data?, response: HTTPURLResponse)
+    case uploading(percentage: Double)
+}
+
 protocol UploadTaskHTTPClient {
-    typealias UploadResponse = (Data?, HTTPURLResponse)
     func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, Error>
     func resumeUpload(url: URL) -> AnyPublisher<UploadResponse, any Error>
 }
 
+enum DownloadResponse: Equatable {
+    case downloaded(url: URL?, response: HTTPURLResponse)
+    case downloading(percentage: Double)
+}
+
 protocol DownloadTaskHTTPClient {
-    typealias DownloadResponse = (URL?, HTTPURLResponse)
     func download(request: URLRequest) -> AnyPublisher<DownloadResponse, any Error>
     func resumeDownload(url: URL) -> AnyPublisher<DownloadResponse, any Error>
 }

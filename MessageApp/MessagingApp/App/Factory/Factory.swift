@@ -19,7 +19,7 @@ final class Factory {
     private lazy var tokenProvider: TokenProvider = HTTPTokenProvider(network: retryAuthenticatedClient, keyStore: keyStore)
     
     //MARK: -UploadTask
-    private lazy var progressDelegate = UploadSessionDelegate(pinning: pinning)
+    private lazy var progressDelegate = ProgressSessionDelegate(pinning: pinning)
     private lazy var uploadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
     private lazy var uploadSession = URLSession(configuration: uploadConfiguration, delegate: progressDelegate, delegateQueue: nil)
     private lazy var uploadClient = URLSessionUploadTaskHTTPClient(session: uploadSession)
@@ -31,7 +31,7 @@ final class Factory {
     
     //MARK: -DownloadTask
     private lazy var downloadConfiguration: URLSessionConfiguration = URLSessionConfiguration.ephemeral
-    private lazy var downloadSession = URLSession(configuration: downloadConfiguration, delegate: sessionDelegate, delegateQueue: nil)
+    private lazy var downloadSession = URLSession(configuration: downloadConfiguration, delegate: progressDelegate, delegateQueue: nil)
     private lazy var downloadClient = URLSessionDownloadTaskHTTPClient(session: downloadSession)
     
     //MARK: -AuthenticatedClient
@@ -47,8 +47,8 @@ final class Factory {
     private lazy var authenticatedNetwork: NetworkModule = AuthenticatedNetwork(
         network: authenticatedClient,
         uploadNetwork: authenticatedClient,
-        downloadNetwork: downloadClient,
-        progress: progressDelegate.progressPublisher,
+        downloadNetwork: authenticatedClient,
+        progressSubscriber: progressDelegate,
         streamUpload: authenticatedClient
     )
     

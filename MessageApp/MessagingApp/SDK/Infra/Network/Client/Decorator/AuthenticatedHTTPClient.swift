@@ -54,22 +54,26 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
             .eraseToAnyPublisher()
     }
     
-    func upload(request: (URLRequest, Data)) -> AnyPublisher<(Data?, HTTPURLResponse), any Error> {
+    func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, any Error> {
         let (request, data) = request
         return performRequestWithToken(request: request)
             .flatMap { request in
                 self.uploadClient.upload(request: (request, data))
             }
-            .flatMap{ (responseData, response) in
-                if response.statusCode == 403 {
-                    debugPrint("Got 403, refreshing token...")
-                    return self.performRequestWithRefreshToken(request: request)
-                        .flatMap { request in
-                            self.uploadClient.upload(request: (request, data))
-                        }
-                        .eraseToAnyPublisher()
+            .flatMap{ response in
+                switch response {
+                case .uploading: break
+                case .uploaded(_, let response):
+                    if response.statusCode == 403 {
+                        debugPrint("Got 403, refreshing token...")
+                        return self.performRequestWithRefreshToken(request: request)
+                            .flatMap { request in
+                                self.uploadClient.upload(request: (request, data))
+                            }
+                            .eraseToAnyPublisher()
+                    }
                 }
-                return Just((responseData, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
+                return Just(response).setFailureType(to: Error.self).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
     }
@@ -84,20 +88,26 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
     
     
     func download(request: URLRequest) -> AnyPublisher<DownloadResponse, any Error> {
-        return performRequestWithToken(request: request)
+        performRequestWithToken(request: request)
             .flatMap { request in
                 self.downloadClient.download(request: request)
             }
-            .flatMap{ (url, response) in
-                if response.statusCode == 403 {
-                    debugPrint("Got 403, refreshing token...")
-                    return self.performRequestWithRefreshToken(request: request)
-                        .flatMap { request in
-                            self.downloadClient.download(request: request)
-                        }
-                        .eraseToAnyPublisher()
+            .flatMap{ response in
+                switch response {
+                case .downloaded(_ , let response):
+                    if response.statusCode == 403 {
+                        debugPrint("Got 403, refreshing token...")
+                        return self.performRequestWithRefreshToken(request: request)
+                            .flatMap { request in
+                                self.downloadClient.download(request: request)
+                            }
+                            .eraseToAnyPublisher()
+                    }
+                    break
+                case .downloading:
+                    break
                 }
-                return Just((url, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
+                return Just(response).setFailureType(to: Error.self).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
     }
@@ -132,7 +142,7 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
         cancelDownloadClient.cancel(url: url)
     }
     
-    func resumeUpload(url: URL) -> AnyPublisher<(Data?, HTTPURLResponse), any Error> {
+    func resumeUpload(url: URL) -> AnyPublisher<UploadResponse, any Error> {
         uploadClient.resumeUpload(url: url)
     }
     

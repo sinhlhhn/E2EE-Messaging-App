@@ -30,13 +30,15 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTP
             return Fail(error: NSError(domain: "cannot create url", code: 0)).eraseToAnyPublisher()
         }
         
+        // Using a completion handler with an upload task prevents `urlSession(_:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)` from being called.
+        // This behavior is different from that of download tasks.
         let task = session.uploadTask(with: request, from: data) { data, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
                 subject.send(completion: .failure(InvalidHTTPResponseError()))
                 return
             }
             debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
-            subject.send((data, httpResponse))
+            subject.send(.uploaded(data: data, response: httpResponse))
             subject.send(completion: .finished)
         }
         
@@ -81,7 +83,7 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTP
                 return
             }
             debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
-            subject.send((data, httpResponse))
+            subject.send(.uploaded(data: data, response: httpResponse))
             subject.send(completion: .finished)
         }
         
