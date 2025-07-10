@@ -15,20 +15,20 @@ final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
     private let uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient
     private let downloadNetwork: DownloadTaskHTTPClient & TaskCancelHTTPClient
-    private let progress: AnyPublisher<Double, Error>
+    private let progressSubscriber: ProgressSubscriber
     private let streamUpload: StreamUploadTaskHTTPClient
     
     init(
         network: DataTaskHTTPClient,
         uploadNetwork: UploadTaskHTTPClient & TaskCancelHTTPClient,
         downloadNetwork: DownloadTaskHTTPClient & TaskCancelHTTPClient,
-        progress: AnyPublisher<Double, Error>,
+        progressSubscriber: ProgressSubscriber,
         streamUpload: StreamUploadTaskHTTPClient
     ) {
         self.network = network
         self.uploadNetwork = uploadNetwork
         self.downloadNetwork = downloadNetwork
-        self.progress = progress
+        self.progressSubscriber = progressSubscriber
         self.streamUpload = streamUpload
     }
     
@@ -202,11 +202,18 @@ final class AuthenticatedNetwork: NetworkModule {
 
         let uploadRequest = (request, body)
         
+        let progress = progressSubscriber.subscribeProgress(url: url).setFailureType(to: Error.self)
+        
         let uploadTask = uploadNetwork.upload(request: uploadRequest)
-            .tryMap { data, response in
-                guard response.statusCode == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
+            .tryMap { response in
+                switch response {
+                case .uploading(let percentage):
+                    print(percentage)
+                case .uploaded(let data, let response):
+                    guard response.statusCode == 200 else {
+                        let error = URLError(.badServerResponse)
+                        throw error
+                    }
                 }
                 return Void()
             }
@@ -218,7 +225,7 @@ final class AuthenticatedNetwork: NetworkModule {
         )
         .print("--------------- ")
         .map { progress, complete in
-            print("slh: \(progress)")
+            print("slh upload: \(progress)")
             return Void()
         }
         .eraseToAnyPublisher()
@@ -231,19 +238,38 @@ final class AuthenticatedNetwork: NetworkModule {
         
         let request = URLRequest(url: url)
         
-        return downloadNetwork.download(request: request)
-            .tryMap { url, response in
-                guard response.statusCode == 200 else {
-                    let error = URLError(.badServerResponse)
-                    throw error
-                }
-                guard let url = url else {
-                    throw NSError(domain: "ivalid url", code: 0, userInfo: nil)
-                }
-                return url
+        let progress = progressSubscriber.subscribeProgress(url: url).setFailureType(to: Error.self)
+        
+        let downloadTask = downloadNetwork.download(request: request)
+            .tryCompactMap { response in
+                switch response {
+                case .downloaded(let url, let response):
+                    guard response.statusCode == 200 else {
+                        let error = URLError(.badServerResponse)
+                        throw error
+                    }
+                    guard let url = url else {
+                        throw NSError(domain: "ivalid url", code: 0, userInfo: nil)
+                    }
+                    return url
+                case .downloading(let percentage):
+                    print(percentage)
+                    return nil
+                }                
             }
             .print("--------------- download ")
             .eraseToAnyPublisher()
+        
+        return Publishers.CombineLatest(
+            progress,
+            downloadTask.prepend((url))
+        )
+        .print("--------------- ")
+        .map { progress, complete in
+            print("slh download: \(progress)")
+            return complete
+        }
+        .eraseToAnyPublisher()
     }
     
     //MARK: -Upload Stream

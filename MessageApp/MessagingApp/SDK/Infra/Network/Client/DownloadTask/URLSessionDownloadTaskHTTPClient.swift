@@ -28,15 +28,9 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
             return Fail(error: NSError(domain: "cannot create url", code: 0)).eraseToAnyPublisher()
         }
         
-        let task = session.downloadTask(with: request) { url, response, error in
-            guard let httpResponse = response as? HTTPURLResponse else {
-                subject.send(completion: .failure(InvalidHTTPResponseError()))
-                return
-            }
-            debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
-            subject.send((url, httpResponse))
-            subject.send(completion: .finished)
-        }
+        // Using a completion handler with a download task prevents `urlSession(_:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)` from being called.
+        // If we want to track progress while using a completion handler, we must use `task.progress.publisher`.
+        let task = session.downloadTask(with: request)
         
         updateTask(task, url: url)
         updateTaskSubject(subject, url: url)
@@ -61,6 +55,8 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
         }
     }
     
+    var cancellables: Set<AnyCancellable> = []
+    
     func resumeDownload(url: URL) -> AnyPublisher<DownloadResponse, any Error> {
         guard let data = getResumeData(url: url) else {
             debugPrint("Cannot resume task with url \(url): no resume data found.")
@@ -79,9 +75,15 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
                 return
             }
             debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
-            subject.send((url, httpResponse))
+            subject.send(.downloaded(url: url, response: httpResponse))
             subject.send(completion: .finished)
         }
+        
+        task.progress.publisher(for: \.fractionCompleted)
+            .sink { progress in
+                subject.send(.downloading(percentage: progress))
+            }
+            .store(in: &cancellables)
         
         updateTask(task, url: url)
         updateTaskSubject(subject, url: url)
