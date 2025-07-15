@@ -21,9 +21,19 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTP
         self.session = session
     }
     
-    func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, any Error> {
-        let (request, data) = request
+    func upload(request: (URLRequest, UploadData)) -> AnyPublisher<UploadResponse, Error> {
+        let (request, uploadDataType) = request
         debugPrint("☁️ CURL: \(request.curlString())")
+        
+        switch uploadDataType {
+        case .data(let data):
+            return uploadData(request: request, data: data)
+        case .file(let fileURL):
+            return uploadFile(request: request, fileURL: fileURL)
+        }
+    }
+    
+    private func uploadData(request: URLRequest, data: Data)  -> AnyPublisher<UploadResponse, Error> {
         let subject: PassthroughSubject<UploadResponse, Error> = .init()
         
         guard let url = request.url else {
@@ -33,6 +43,36 @@ final class URLSessionUploadTaskHTTPClient: UploadTaskHTTPClient, TaskCancelHTTP
         // Using a completion handler with an upload task prevents `urlSession(_:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)` from being called.
         // This behavior is different from that of download tasks.
         let task = session.uploadTask(with: request, from: data) { data, response, error in
+            guard let httpResponse = response as? HTTPURLResponse else {
+                subject.send(completion: .failure(InvalidHTTPResponseError()))
+                return
+            }
+            debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
+            subject.send(.uploaded(data: data, response: httpResponse))
+            subject.send(completion: .finished)
+        }
+        
+        updateTask(task, url: url)
+        updateTaskSubject(subject, url: url)
+        
+        task.resume()
+        return subject
+            .handleEvents(receiveCancel: {
+                task.cancel()
+            })
+            .eraseToAnyPublisher()
+    }
+    
+    private func uploadFile(request: URLRequest, fileURL: URL) -> AnyPublisher<UploadResponse, Error> {
+        let subject: PassthroughSubject<UploadResponse, Error> = .init()
+        
+        guard let url = request.url else {
+            return Fail(error: NSError(domain: "cannot create url", code: 0)).eraseToAnyPublisher()
+        }
+        
+        // Using a completion handler with an upload task prevents `urlSession(_:task:didSendBodyData:totalBytesSent:totalBytesExpectedToSend:)` from being called.
+        // This behavior is different from that of download tasks.
+        let task = session.uploadTask(with: request, fromFile: fileURL) { data, response, error in
             guard let httpResponse = response as? HTTPURLResponse else {
                 subject.send(completion: .failure(InvalidHTTPResponseError()))
                 return

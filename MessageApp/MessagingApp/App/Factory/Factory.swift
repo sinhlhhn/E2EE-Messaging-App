@@ -73,6 +73,7 @@ extension Factory {
         
         return SplashView(viewModel: viewModel)
             .onAppear {
+                print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
                 viewModel.checkAuthentication()
             }
     }

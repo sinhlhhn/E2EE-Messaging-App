@@ -54,7 +54,7 @@ final class AuthenticatedHTTPClient: HTTPClient, UploadTaskHTTPClient, DownloadT
             .eraseToAnyPublisher()
     }
     
-    func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, any Error> {
+    func upload(request: (URLRequest, UploadData)) -> AnyPublisher<UploadResponse, any Error> {
         let (request, data) = request
         return performRequestWithToken(request: request)
             .flatMap { request in

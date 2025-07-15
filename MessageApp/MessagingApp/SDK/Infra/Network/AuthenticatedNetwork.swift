@@ -165,6 +165,41 @@ final class AuthenticatedNetwork: NetworkModule {
 //        uploadNetwork.cancel(url: <#T##URL#>)
     }
     
+    func uploadFile() -> AnyPublisher<Void, Error> {
+        guard let url = URL(string: "\(localhost)upload/raw/freemusic.mp3") else {
+            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        
+        let documentURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        let fileURL = documentURL.appendingPathComponent("freemusic.mp3")
+        
+        let attributes = try! FileManager.default.attributesOfItem(atPath: fileURL.path)
+        if let fileSize = attributes[.size] as? NSNumber {
+            let contentLength = fileSize.intValue
+            request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")
+            print("Content-Length: \(contentLength)")
+        }
+        
+        return uploadNetwork.upload(request: (request, .file(fileURL)))
+            .tryMap { response in
+                switch response {
+                case .uploading(let percentage):
+                    print(percentage)
+                case .uploaded(let data, let response):
+                    guard response.statusCode == 200 else {
+                        let error = URLError(.badServerResponse)
+                        throw error
+                    }
+                }
+                return Void()
+            }
+            .eraseToAnyPublisher()
+    }
+    
     //MARK: -Image
     func uploadImage(
         images: [MultipartImage],
@@ -174,33 +209,23 @@ final class AuthenticatedNetwork: NetworkModule {
             return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        
-        let boundary = "Boundary-\(UUID().uuidString)"
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-
-        var body = Data()
+        var multipart = MultipartRequest()
 
         // Add fields
         for field in fields {
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
-            body.append("\(field.value)\r\n")
+            multipart.add(key: field.name, value: field.value)
         }
 
         // Add images
         for image in images {
-            body.append("--\(boundary)\r\n")
-            body.append("Content-Disposition: form-data; name=\"\(image.fieldName)\"; filename=\"\(image.fileName)\"\r\n")
-            body.append("Content-Type: \(image.mimeType)\r\n\r\n")
-            body.append(image.data)
-            body.append("\r\n")
+            multipart.add(key: image.fieldName, fileName: image.fileName, fileMimeType: image.mimeType, fileData: image.data)
         }
 
-        body.append("--\(boundary)--\r\n")
-
-        let uploadRequest = (request, body)
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue(multipart.httpContentTypeHeadeValue, forHTTPHeaderField: "Content-Type")
+        
+        let uploadRequest: (URLRequest, UploadData) = (request, .data(multipart.httpBody))
         
         let progress = progressSubscriber.subscribeProgress(url: url).setFailureType(to: Error.self)
         
@@ -294,25 +319,4 @@ final class AuthenticatedNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
 
-}
-
-struct MultipartImage {
-    let data: Data
-    let fieldName: String
-    let fileName: String
-    let mimeType: String
-}
-
-struct FormField {
-    let name: String
-    let value: String
-}
-
-// MARK: - Data helper
-private extension Data {
-    mutating func append(_ string: String) {
-        if let data = string.data(using: .utf8) {
-            append(data)
-        }
-    }
 }
