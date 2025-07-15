@@ -5,13 +5,16 @@ const upload = require("../storage/storage");
 const path = require('path');
 const fs = require('fs');
 
-router.post('/upload', upload.single('image'), (req, res) => {
+router.post('/upload', upload.single('media'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+  // Extract the subfolder from the file path to build the correct relative URL
+  const relativePath = req.file.path.split("uploads")[1]
 
   res.status(200).json({
     message: 'Upload successful',
     filename: req.file.filename,
-    path: `/uploads/${req.file.filename}`
+    path: `/uploads/${relativePath}`
   });
 });
 
@@ -44,8 +47,6 @@ router.post("/upload/raw/:filename", (req, res) => {
 
   req.on("close", () => {
     console.warn("⚠️ Request closed");
-    // You can also destroy the stream here if needed
-    writeStream.destroy(); // Cleanup
   });
 
   req.on("error", (err) => {
@@ -55,4 +56,3 @@ router.post("/upload/raw/:filename", (req, res) => {
 });
 
 module.exports = router;
-

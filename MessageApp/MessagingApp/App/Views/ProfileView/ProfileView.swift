@@ -22,6 +22,12 @@ struct ProfileView: View {
                 .background(Color.gray)
                 .clipShape(Circle())
             Button {
+                viewModel.uploadFile()
+            } label: {
+                Text("Upload File")
+            }
+            
+            Button {
                 viewModel.downloadData()
             } label: {
                 Text("Download data")
@@ -45,15 +51,25 @@ struct ProfileView: View {
 
 @Observable
 class ProfileViewModel {
-    private let service: ProfileUseCase
+    private let service: ProfileService
     private var cancellables: Set<AnyCancellable> = []
     
-    init(service: ProfileUseCase) {
+    init(service: ProfileService) {
         self.service = service
     }
     
     func downloadData() {
         service.downloadImage()
+    }
+    
+    func uploadFile() {
+        service.uploadFile()
+            .sink { _ in
+                
+            } receiveValue: { _ in
+                
+            }
+            .store(in: &cancellables)
     }
     
     func uploadImage() {
@@ -67,7 +83,7 @@ class ProfileViewModel {
             return
         }
         
-        service.uploadImage(image: ImageData(image: imageData, userName: "", fileName: "tiger.jpg", fieldName: "image"))
+        service.uploadImage(image: ImageData(image: imageData, userName: "", fileName: "tiger.jpg", fieldName: "media"))
             .sink { _ in
                 
             } receiveValue: { _ in
@@ -108,7 +124,7 @@ class ProfileService: ProfileUseCase {
     
     func uploadImage(image: ImageData) -> AnyPublisher<Void, Error> {
         let images: [MultipartImage] = [
-            .init(data: image.image, fieldName: image.fieldName, fileName: image.fileName, mimeType: "jpg")
+            .init(data: image.image, fieldName: image.fieldName, fileName: image.fileName, mimeType: "image/jpg")
         ]
         return network.uploadImage(images: images, fields: [])
             .map { _ in
@@ -116,6 +132,10 @@ class ProfileService: ProfileUseCase {
             }
             .eraseToAnyPublisher()
         
+    }
+    
+    func uploadFile() -> AnyPublisher<Void, Error> {
+        return network.uploadFile()
     }
     
     func cancel(image: ImageData) {
@@ -162,6 +182,6 @@ class ProfileService: ProfileUseCase {
     }
 }
 
-#Preview {
-    ProfileView(viewModel: ProfileViewModel(service: NullProfileService()))
-}
+//#Preview {
+//    ProfileView(viewModel: ProfileViewModel(service: NullProfileService()))
+//}

@@ -26,8 +26,13 @@ enum UploadResponse: Equatable {
     case uploading(percentage: Double)
 }
 
+enum UploadData {
+    case data(Data)
+    case file(URL)
+}
+
 protocol UploadTaskHTTPClient {
-    func upload(request: (URLRequest, Data)) -> AnyPublisher<UploadResponse, Error>
+    func upload(request: (URLRequest, UploadData)) -> AnyPublisher<UploadResponse, Error>
     func resumeUpload(url: URL) -> AnyPublisher<UploadResponse, any Error>
 }
 
