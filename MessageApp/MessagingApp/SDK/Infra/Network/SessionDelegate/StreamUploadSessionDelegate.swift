@@ -48,7 +48,7 @@ final class StreamUploadSessionDelegate: NSObject, URLSessionDelegate, URLSessio
 
 extension StreamUploadSessionDelegate: StreamDelegate {
     func createStream(for id: Int) {
-        boundStreams[id] = createStream()
+        
     }
     
     private func createStream() -> Streams {
@@ -64,7 +64,6 @@ extension StreamUploadSessionDelegate: StreamDelegate {
         output.delegate = self
         output.schedule(in: .main, forMode: .default)
         output.open()
-        print("Create streams")
     
         return Streams(input: input, output: output)
     }
@@ -72,10 +71,11 @@ extension StreamUploadSessionDelegate: StreamDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
         print("Delegate: needNewBodyStream")
-        if let boundStream = boundStreams[task.taskIdentifier] {
-            completionHandler(boundStream.input)
-            startSendingData(boundStream)
-        }
+        let boundStream = createStream()
+        print("Create streams with \(task.taskIdentifier)")
+        completionHandler(boundStream.input)
+        startSendingData(boundStream)
+        print("Delegate: start sending data")
     }
     
     private func startSendingData(_ boundStream: Streams) {
@@ -90,6 +90,7 @@ extension StreamUploadSessionDelegate: StreamDelegate {
                     let messageCount = messageData.count
                     let bytesWritten: Int = messageData.withUnsafeBytes() { (buffer: UnsafePointer<UInt8>) in
                         self.canWrite = false
+                        print("streaming: \(message)")
                         return boundStream.output.write(buffer, maxLength: messageCount)
                     }
                     if bytesWritten < messageCount {
@@ -111,15 +112,21 @@ extension StreamUploadSessionDelegate: StreamDelegate {
         if eventCode.contains(.errorOccurred) {
             // Close the streams and alert the user that the upload failed.
             print("Delegate: Error occurred")
-            aStream.close()
+            closeStream(aStream)
         }
         
         if eventCode.contains(.endEncountered) {
             // Close the streams and alert the user that the upload failed.
             print("Delegate: Encountered")
-            aStream.close()
+            closeStream(aStream)
         }
         
         print("Delegate: Stream event: \(eventCode)")
+    }
+    
+    private func closeStream(_ stream: Stream) {
+        stream.close()
+        streamingTimer?.invalidate()
+        streamingTimer = nil
     }
 }
