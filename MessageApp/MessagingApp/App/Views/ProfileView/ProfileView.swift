@@ -10,6 +10,7 @@ import SwiftUI
 struct ProfileView: View {
     
     private let viewModel: ProfileViewModel
+    @State var isPresented: Bool = false
     
     public init(viewModel: ProfileViewModel) {
         self.viewModel = viewModel
@@ -21,6 +22,21 @@ struct ProfileView: View {
                 .frame(width: 100, height: 100)
                 .background(Color.gray)
                 .clipShape(Circle())
+            Button {
+                isPresented = true
+            } label: {
+                Text("Attach File")
+            }
+            .fileImporter(isPresented: $isPresented, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+                switch result {
+                case .success(let urls):
+                    viewModel.attachFile(urls.first!)
+                    print(urls.first?.path)
+                case .failure(let failure):
+                    print(failure)
+                }
+            }
+            
             Button {
                 viewModel.uploadFile()
             } label: {
@@ -62,7 +78,18 @@ class ProfileViewModel {
         service.downloadImage()
     }
     
+    func attachFile(_ url: URL) {
+        uploadFile()
+    }
+    
     func uploadFile() {
+        service.uploadFile()
+            .sink { _ in
+                
+            } receiveValue: { _ in
+                
+            }
+            .store(in: &cancellables)
         service.uploadFile()
             .sink { _ in
                 
