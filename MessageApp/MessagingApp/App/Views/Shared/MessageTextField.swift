@@ -11,7 +11,7 @@ struct MessageTextField: View {
     @State var text: String = ""
     private let didTapSend: (String) -> Void
     
-    fileprivate init(text: String, didTapSend: @escaping (String) -> Void) {
+    init(text: String, didTapSend: @escaping (String) -> Void) {
         self.text = text
         self.didTapSend = didTapSend
     }

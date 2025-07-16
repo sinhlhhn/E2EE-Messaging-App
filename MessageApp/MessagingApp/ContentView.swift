@@ -27,12 +27,12 @@ struct ContentView: View {
                         flow.start(type: .pushTo(ConversationDestination.conversation(sender: sender)))
                     }
                 case.conversation(let sender):
-//                    factory.createConversation(sender: sender, didTapItem: { sender, receiver in
-//                        flow.start(type: .pushTo(ConversationDestination.chat(sender: sender, receiver: receiver)))
-//                    }, didTapLogOut: {
-//                        flow.start(type: .root(ConversationDestination.logIn))
-//                    })
-                    factory.createProfile()
+                    factory.createConversation(sender: sender, didTapItem: { sender, receiver in
+                        flow.start(type: .pushTo(ConversationDestination.chat(sender: sender, receiver: receiver)))
+                    }, didTapLogOut: {
+                        flow.start(type: .root(ConversationDestination.logIn))
+                    })
+//                    factory.createProfile()
                 case .chat(let sender, let receiver):
                     factory.createChat(sender: sender, receiver: receiver, didTapBack: {
                         flow.start(type: .popBack)
