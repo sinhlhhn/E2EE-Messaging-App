@@ -12,7 +12,7 @@ struct MessageVideoView: View {
     @State var player: AVPlayer
     @State var isPlaying: Bool = false
     
-    init(source: String, fileExtension: String) {
+    init(source: String, fileExtension: String? = nil) {
         player = AVPlayer(
             url: Bundle.main.url(
                 forResource: source,
@@ -42,5 +42,5 @@ struct MessageVideoView: View {
 }
 
 #Preview {
-    MessageVideoView(source: "freevideo", fileExtension: "mp4")
+    MessageVideoView(source: "freevideo.mp4", fileExtension: nil)
 }

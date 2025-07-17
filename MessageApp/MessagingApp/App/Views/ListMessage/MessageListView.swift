@@ -59,16 +59,15 @@ struct MessageListView: View {
         }
     }
     
+    @ViewBuilder
     private func createMessageView(_ message: Message) -> some View {
-        Group {
-            switch message.type {
-            case .text(let content):
-                MessageView(content: content)
-            case .video(let url):
-                Text("video")
-            case .image(let url):
-                Text("Image")
-            }
+        switch message.type {
+        case .text(let data):
+            MessageView(content: data.content)
+        case .video(let data):
+            MessageVideoView(source: data.path.path)
+        case .image(let data):
+            MessageImageView(image: data.path.path)
         }
     }
     

@@ -48,7 +48,7 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] response in
                 if let id = Int(response.messageId) {
-                    self?.messages.append(Message(messageId: id, type: .text(response.message), isFromCurrentUser: false))
+                    self?.messages.append(Message(messageId: id, type: .text(.init(content: response.message)), isFromCurrentUser: false))
                 } else {
                     debugPrint("❌ cannot get id from message")
                 }
@@ -73,7 +73,7 @@ class ChatViewModel {
     }
     
     func sendMessage(_ text: String) {
-        messages.append(Message(messageId: 0, type: .text(text), isFromCurrentUser: true))
+        messages.append(Message(messageId: 0, type: .text(.init(content: text)), isFromCurrentUser: true))
         service.sendMessage(TextMessage(messageId: "", sender: sender, receiver: receiver, message: text))
     }
     
