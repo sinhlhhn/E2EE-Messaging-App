@@ -48,7 +48,7 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] response in
                 if let id = Int(response.messageId) {
-                    self?.messages.append(Message(messageId: id, content: response.message, isFromCurrentUser: false))
+                    self?.messages.append(Message(messageId: id, type: .text(response.message), isFromCurrentUser: false))
                 } else {
                     debugPrint("❌ cannot get id from message")
                 }
@@ -61,7 +61,7 @@ class ChatViewModel {
         connectCancellable = service.connect(user: sender)
             .sink { completion in
                 switch completion {
-                    case .finished: debugPrint("socket connected")
+                    case .finished: debugPrint("socket finished")
                 case .failure(let error):
                     //TODO: -show no connection state
                     debugPrint("socket get error: \(error.localizedDescription)")
@@ -73,7 +73,7 @@ class ChatViewModel {
     }
     
     func sendMessage(_ text: String) {
-        messages.append(Message(messageId: 0, content: text, isFromCurrentUser: true))
+        messages.append(Message(messageId: 0, type: .text(text), isFromCurrentUser: true))
         service.sendMessage(TextMessage(messageId: "", sender: sender, receiver: receiver, message: text))
     }
     

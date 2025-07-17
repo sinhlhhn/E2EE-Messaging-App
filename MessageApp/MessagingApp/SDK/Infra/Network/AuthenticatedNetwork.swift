@@ -157,7 +157,7 @@ final class AuthenticatedNetwork: NetworkModule {
             .tryMap { data, response -> [MessageResponse] in
                 try GenericMapper.map(data: data, response: response)
             }
-            .map { $0.map { Message(messageId: $0.id, content: $0.text, isFromCurrentUser: $0.sender == sender)} }
+            .map { $0.map { Message(messageId: $0.id, type: .text($0.text), isFromCurrentUser: $0.sender == sender)} }
             .eraseToAnyPublisher()
     }
     

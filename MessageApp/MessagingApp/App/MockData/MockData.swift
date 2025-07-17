@@ -9,27 +9,28 @@ import Combine
 import Foundation
 
 let mockMessages: [Message] = [
-    Message(messageId: 1, content: "Hey, how are you?", isFromCurrentUser: true),
-    Message(messageId: 2, content: "I'm good, thanks! How about you?", isFromCurrentUser: false),
-    Message(messageId: 3, content: "Doing well. Did you finish the project?", isFromCurrentUser: true),
-    Message(messageId: 4, content: "Yes, I submitted it this morning.", isFromCurrentUser: false),
-    Message(messageId: 5, content: "Great job! I'll review it soon.", isFromCurrentUser: true),
-    Message(messageId: 6, content: "Thanks, let me know if you have feedback.", isFromCurrentUser: false),
-    Message(messageId: 7, content: "Sure. Want to grab lunch later?", isFromCurrentUser: true),
-    Message(messageId: 8, content: "Sounds good! Where do you want to go?", isFromCurrentUser: false),
-    Message(messageId: 9, content: "Maybe the new place near the office?", isFromCurrentUser: true),
-    Message(messageId: 10, content: "Perfect, I’ve heard good things about it.", isFromCurrentUser: false),
-    Message(messageId: 11, content: "Let’s meet at 12:30?", isFromCurrentUser: true),
-    Message(messageId: 12, content: "Works for me. See you then!", isFromCurrentUser: false),
-    Message(messageId: 13, content: "By the way, are you attending the workshop tomorrow?", isFromCurrentUser: true),
-    Message(messageId: 14, content: "Yes, I registered last week.", isFromCurrentUser: false),
-    Message(messageId: 15, content: "Nice. I’ll see you there as well.", isFromCurrentUser: true),
-    Message(messageId: 16, content: "Looking forward to it!", isFromCurrentUser: false),
-    Message(messageId: 17, content: "Oh, can you send me the slides from the last meeting?", isFromCurrentUser: false),
-    Message(messageId: 18, content: "Sure, I’ll email them to you in a bit.", isFromCurrentUser: true),
-    Message(messageId: 19, content: "Thanks, appreciate it!", isFromCurrentUser: false),
-    Message(messageId: 20, content: "No problem at all!", isFromCurrentUser: true)
+    Message(messageId: 1, type: .text("Hey, how are you?"), isFromCurrentUser: true),
+    Message(messageId: 2, type: .text("I'm good, thanks! How about you?"), isFromCurrentUser: false),
+    Message(messageId: 3, type: .text("Doing well. Did you finish the project?"), isFromCurrentUser: true),
+    Message(messageId: 4, type: .text("Yes, I submitted it this morning."), isFromCurrentUser: false),
+    Message(messageId: 5, type: .text("Great job! I'll review it soon."), isFromCurrentUser: true),
+    Message(messageId: 6, type: .text("Thanks, let me know if you have feedback."), isFromCurrentUser: false),
+    Message(messageId: 7, type: .text("Sure. Want to grab lunch later?"), isFromCurrentUser: true),
+    Message(messageId: 8, type: .text("Sounds good! Where do you want to go?"), isFromCurrentUser: false),
+    Message(messageId: 9, type: .text("Maybe the new place near the office?"), isFromCurrentUser: true),
+    Message(messageId: 10, type: .text("Perfect, I’ve heard good things about it."), isFromCurrentUser: false),
+    Message(messageId: 11, type: .text("Let’s meet at 12:30?"), isFromCurrentUser: true),
+    Message(messageId: 12, type: .text("Works for me. See you then!"), isFromCurrentUser: false),
+    Message(messageId: 13, type: .text("By the way, are you attending the workshop tomorrow?"), isFromCurrentUser: true),
+    Message(messageId: 14, type: .text("Yes, I registered last week."), isFromCurrentUser: false),
+    Message(messageId: 15, type: .text("Nice. I’ll see you there as well."), isFromCurrentUser: true),
+    Message(messageId: 16, type: .text("Looking forward to it!"), isFromCurrentUser: false),
+    Message(messageId: 17, type: .text("Oh, can you send me the slides from the last meeting?"), isFromCurrentUser: false),
+    Message(messageId: 18, type: .text("Sure, I’ll email them to you in a bit."), isFromCurrentUser: true),
+    Message(messageId: 19, type: .text("Thanks, appreciate it!"), isFromCurrentUser: false),
+    Message(messageId: 20, type: .text("No problem at all!"), isFromCurrentUser: true)
     ]
+
 
 let mockUsers: [User] = [
     User(id: 1, username: "Sinhlh"),
