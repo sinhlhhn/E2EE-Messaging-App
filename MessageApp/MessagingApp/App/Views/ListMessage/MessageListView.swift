@@ -24,12 +24,12 @@ struct MessageListView: View {
                     if message.isFromCurrentUser {
                         Spacer()
                     }
-                    MessageView(content: message.content)
-                        .onAppear {
-                            if message.messageId == messages.first?.messageId, isScrollUp {
-                                reachedTop = true
-                            }
+                    createMessageView(message)
+                    .onAppear {
+                        if message.messageId == messages.first?.messageId, isScrollUp {
+                            reachedTop = true
                         }
+                    }
                 }
                 .id(message.messageId)
                 .listRowSeparator(.hidden)
@@ -56,6 +56,19 @@ struct MessageListView: View {
                     }
                 })
             .scrollContentBackground(.hidden)
+        }
+    }
+    
+    private func createMessageView(_ message: Message) -> some View {
+        Group {
+            switch message.type {
+            case .text(let content):
+                MessageView(content: content)
+            case .video(let url):
+                Text("video")
+            case .image(let url):
+                Text("Image")
+            }
         }
     }
     
