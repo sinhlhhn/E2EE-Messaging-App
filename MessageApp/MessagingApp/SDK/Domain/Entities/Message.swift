@@ -7,10 +7,22 @@
 
 import Foundation
 
+struct MessageText: Hashable {
+    let content: String
+}
+
+struct MessageVideo: Hashable {
+    let path: URL
+}
+
+struct ImageVideo: Hashable {
+    let path: URL
+}
+
 enum MessageType: Hashable {
-    case text(String)
-    case image(URL)
-    case video(URL)
+    case text(MessageText)
+    case image(MessageVideo)
+    case video(ImageVideo)
 }
 
 struct Message: Identifiable, Hashable {
@@ -22,11 +34,11 @@ struct Message: Identifiable, Hashable {
     func getData() -> Data {
         switch type {
         case .text(let text):
-            return text.data(using: .utf8)!
-        case .image(let url):
-            return try! Data(contentsOf: url)
-        case .video(let url):
-            return try! Data(contentsOf: url)
+            return text.content.data(using: .utf8)!
+        case .image(let type):
+            return try! Data(contentsOf: type.path)
+        case .video(let type):
+            return try! Data(contentsOf: type.path)
         }
     }
 }

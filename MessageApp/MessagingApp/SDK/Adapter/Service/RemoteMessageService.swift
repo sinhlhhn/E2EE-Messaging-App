@@ -62,6 +62,6 @@ class RemoteMessageService: MessageUseCase {
         messages.map { message in
             let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: message.getData()) ?? Data())
             let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
-            return Message(messageId: message.messageId, type: .text(text), isFromCurrentUser: message.isFromCurrentUser)}
+            return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser)}
     }
 }
