@@ -33,7 +33,11 @@ class LocalSocketService: SocketUseCase {
     private let keyStore: KeyStoreModule
     
     private let subject = PassthroughSubject<Message, Error>()
-    private let connectSubject = PassthroughSubject<Void, Error>()
+    private var connectSubject = PassthroughSubject<Void, Error>()
+    
+    private enum Constants {
+        static let register: String = "register"
+    }
 
     init(sessionDelegate: URLSessionDelegate, encryptService: EncryptionModule, decryptService: DecryptionModule, keyStore: KeyStoreModule) {
         self.encryptService = encryptService
@@ -46,6 +50,12 @@ class LocalSocketService: SocketUseCase {
     }
     
     func connect(user: User) -> AnyPublisher<Void, Error> {
+        connectSubject = PassthroughSubject<Void, Error>()
+        
+        // Every time connect(user:) is called, we’re adding another .connect listener. Socket.IO does not replace existing handlers; it accumulates them.
+        // We need to remove the previous event listeners before adding them again
+        socket.off(clientEvent: .connect)
+        
         socket.on(clientEvent: .connect) { [weak self] data, ack in
             debugPrint("🔌 Socket connected \(String(describing: self?.socket.status))")
             self?.registerUser(user)
@@ -56,7 +66,9 @@ class LocalSocketService: SocketUseCase {
     }
     
     private func registerUser(_ user: User) {
-        socket.on("register") { [weak self] _, _ in
+        socket.off(Constants.register)
+        
+        socket.on(Constants.register) { [weak self] _, _ in
             debugPrint("🔌 Socket registered successfully with user: \(user) - \(String(describing: self?.socket.status))")
             self?.connectSubject.send(())
         }
@@ -82,8 +94,10 @@ class LocalSocketService: SocketUseCase {
             }
         }
 
-        socket.on(clientEvent: .disconnect) { data, ack in
+        socket.on(clientEvent: .disconnect) { [weak self] data, ack in
             debugPrint("❌ Socket disconnected")
+            // Complete the stream after the socket is disconnected.
+            self?.connectSubject.send(completion: .finished)
         }
         
         socket.on(clientEvent: .error) { error, ack in
