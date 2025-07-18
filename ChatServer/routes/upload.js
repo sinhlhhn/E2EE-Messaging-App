@@ -1,6 +1,5 @@
 const express = require("express");
 const router = express.Router();
-// const db = require("../db/index");
 const upload = require("../storage/storage");
 const path = require('path');
 const fs = require('fs');
@@ -20,7 +19,20 @@ router.post('/upload', upload.single('media'), (req, res) => {
 
 router.post("/upload/raw/:filename", (req, res) => {
   const filename = req.params.filename;
-  const uploadDir = path.join(__dirname, "../storage/uploads");
+  const userId = req.query.userId;
+
+  if (!userId) {
+    return res.status(400).json({ error: "Missing userId query param" });
+  }
+
+  const ext = path.extname(filename).toLowerCase();
+  let mediaType = 'file';
+  if (['.jpg', '.jpeg', '.png', '.gif'].includes(ext)) mediaType = 'image';
+  else if (['.mp4', '.mov', '.avi'].includes(ext)) mediaType = 'video';
+  else if (['.m4a', '.mp3', '.aac'].includes(ext)) mediaType = 'audio';
+
+  const uploadDir = path.join(__dirname, `../storage/uploads/${mediaType}/${userId}`);
+
   const filePath = path.join(uploadDir, filename);
 
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -32,7 +44,10 @@ router.post("/upload/raw/:filename", (req, res) => {
 
   writeStream.on("finish", () => {
     console.log("✅ File upload complete");
-    res.status(200).json({ message: "✅ Raw stream upload complete" });
+    res.status(200).json({
+      message: "✅ Raw stream upload complete",
+      path: `/uploads/${mediaType}/${userId}/${filename}`
+    });
   });
 
   writeStream.on("error", (err) => {

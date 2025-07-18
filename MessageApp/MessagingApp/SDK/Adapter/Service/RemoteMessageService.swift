@@ -60,8 +60,24 @@ class RemoteMessageService: MessageUseCase {
     
     private func decryptMessage(_ messages: [Message], secureKey: Data) -> [Message] {
         messages.map { message in
-            let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: message.getData()) ?? Data())
-            let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
-            return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser)}
+            switch message.type {
+            case .text(let data):
+                let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.getData()) ?? Data())
+                let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
+                return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser)
+            case .image(let data):
+                //TODO: -handle image
+                return Message(messageId: message.messageId, type: .text(.init(content: "text")), isFromCurrentUser: message.isFromCurrentUser)
+            case .video(let data):
+                let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.getData()) ?? Data())
+                let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
+                let path = URL(string: text)!
+                return Message(messageId: message.messageId, type: .video(.init(path: path)), isFromCurrentUser: message.isFromCurrentUser)
+            case .attachment(let data):
+                //TODO: -handle attachment
+                return Message(messageId: message.messageId, type: .text(.init(content: "text")), isFromCurrentUser: message.isFromCurrentUser)
+            }
+        }
+        
     }
 }

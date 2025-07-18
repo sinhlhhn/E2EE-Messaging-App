@@ -11,19 +11,31 @@ import Combine
 import SocketIO
 
 // TODO: should extract to send and receive model
-struct TextMessage: SocketData {
+struct SocketMessage: SocketData {
     let messageId: String
     let sender: String
     let receiver: String
-    let message: String
+    let messageType: MessageType
     
     func socketRepresentation() -> SocketData {
-        return ["sender": sender, "receiver": receiver, "text": message]
+        switch messageType {
+        case .text(let textMessageData):
+            return ["sender": sender, "receiver": receiver, "text": textMessageData.content]
+        case .image(let imageMessage):
+            //TODO: -handle send image via socket
+            return ["":""]
+        case .video(let videoMessage):
+            //TODO: -handle send video via socket
+            return ["":""]
+        case .attachment(let attachmentMessage):
+            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path]
+        }
+        
     }
 }
 
 class LocalSocketService: SocketUseCase {
-    typealias Message = TextMessage
+    typealias Message = SocketMessage
     typealias User = String
     
     private let manager: SocketManager
@@ -79,15 +91,26 @@ class LocalSocketService: SocketUseCase {
 
         socket.on("receive-message") { [weak self] data, ack in
             if let dict = data.first as? [String: Any],
-               let message = dict["text"] as? String,
                let user = dict["from"] as? String,
                let id = dict["messageId"] as? Int
             {
                 guard let self else { return }
-                debugPrint("📥 Message received: \(message)")
-                // You can post a notification or update the UI here
-                let decryptedMessage = decryptMessage(message: message)
-                subject.send(TextMessage(messageId: String("\(id)"), sender: user, receiver: "", message: decryptedMessage))
+                if let message = dict["text"] as? String {
+                    debugPrint("📥 Message received: \(message)")
+                    // You can post a notification or update the UI here
+                    let decryptedMessage = decryptMessage(message: message)
+                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .text(.init(content: decryptedMessage))))
+                    return
+                }
+                if let mediaURL = dict["mediaUrl"] as? String,
+                   let url = URL(string: mediaURL) {
+                    debugPrint("📥 Media received: \(mediaURL)")
+                    let decryptedMediaURL = decryptMessage(message: mediaURL)
+                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: url))))
+                    return
+                }
+                
+                print("❌ unknown message format \(data)")
                 
             } else {
                 debugPrint("❌ invalid data \(data)")
@@ -133,9 +156,24 @@ class LocalSocketService: SocketUseCase {
             return
         }
         debugPrint("📤 Sending: \(message)")
-        let encryptMessage = encryptMessage(message: message.message)
-        let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, message: encryptMessage)
-        socket.emit("send-message", encryptedMessage)
+        switch message.messageType {
+        case .text(let data):
+            let encryptMessage = encryptMessage(message: data.content)
+            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .text(.init(content: encryptMessage)))
+            socket.emit("send-message", encryptedMessage)
+        case .image(_):
+            fatalError()
+        case .video(_):
+            fatalError()
+        case .attachment(let data):
+            let encryptMessage = encryptMessage(message: data.path.path)
+            guard let url = URL(string: encryptMessage) else {
+                fatalError("cannot convert string to url \(encryptMessage)")
+            }
+            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .attachment(.init(path: url)))
+            socket.emit("send-message", encryptedMessage)
+        }
+        
     }
     
     private func encryptMessage(message: String) -> String {

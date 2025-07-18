@@ -33,8 +33,11 @@ db.prepare(`
   CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     senderId INTEGER NOT NULL,
-    receiverId INTEGER NOT NULL,
-    text TEXT NOT NULL,
+    receiverId INTEGER,
+    groupId INTEGER,
+    text TEXT,
+    mediaUrl TEXT,
+    mediaType TEXT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (senderId) REFERENCES users(id),
     FOREIGN KEY (receiverId) REFERENCES users(id)

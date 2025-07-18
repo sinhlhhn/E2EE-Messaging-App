@@ -7,22 +7,73 @@
 
 import Foundation
 
-struct MessageText: Hashable {
+protocol SingleMediaMessage: Hashable {
+    var path: URL { get }
+}
+
+extension SingleMediaMessage {
+    var fileTitle: String {
+        path.lastPathComponent
+    }
+    
+    var fileSize: Int {
+        var contentLength: Int? = nil
+
+        let attributes = try! FileManager.default.attributesOfItem(atPath: path.path)
+        if let fileSize = attributes[.size] as? NSNumber {
+            contentLength = fileSize.intValue
+            print("Content-Length: \(contentLength)")
+        }
+        return contentLength ?? 0
+    }
+}
+
+struct TextMessageData: Hashable {
     let content: String
+    
+    func getData() -> Data {
+        content.data(using: .utf8)!
+    }
 }
 
-struct MessageVideo: Hashable {
+struct VideoMessage: Hashable, SingleMediaMessage {
     let path: URL
+    
+    func getData() -> Data {
+        return try! Data(contentsOf: path)
+    }
 }
 
-struct ImageVideo: Hashable {
+struct ImageMessage: Hashable {
+    let path: [URL]
+    
+    func getData() -> [Data] {
+        var result: [Data] = []
+        for url in path {
+            do {
+               let data = try Data(contentsOf: url)
+                result.append(data)
+            } catch {
+                print("Error: \(error)")
+            }
+        }
+        return result
+    }
+}
+
+struct AttachmentMessage: Hashable, SingleMediaMessage {
     let path: URL
+    
+    func getData() -> Data {
+        return try! Data(contentsOf: path)
+    }
 }
 
 enum MessageType: Hashable {
-    case text(MessageText)
-    case image(MessageVideo)
-    case video(ImageVideo)
+    case text(TextMessageData)
+    case image(ImageMessage)
+    case video(VideoMessage)
+    case attachment(AttachmentMessage)
 }
 
 struct Message: Identifiable, Hashable {
@@ -30,15 +81,4 @@ struct Message: Identifiable, Hashable {
     let messageId: Int
     let type: MessageType
     let isFromCurrentUser: Bool
-    
-    func getData() -> Data {
-        switch type {
-        case .text(let text):
-            return text.content.data(using: .utf8)!
-        case .image(let type):
-            return try! Data(contentsOf: type.path)
-        case .video(let type):
-            return try! Data(contentsOf: type.path)
-        }
-    }
 }

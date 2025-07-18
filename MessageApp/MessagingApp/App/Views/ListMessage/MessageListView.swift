@@ -14,6 +14,9 @@ struct MessageListView: View {
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     
+    var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
+    var messageAttachmentViewModel: MessageAttachmentViewModel
+    
     var body: some View {
         ScrollViewReader { proxy in
             if reachedTop {
@@ -65,9 +68,15 @@ struct MessageListView: View {
         case .text(let data):
             MessageView(content: data.content)
         case .video(let data):
-            MessageVideoView(source: data.path.path)
+            MessageVideoView(viewModel: .init(source: data.path.path))
         case .image(let data):
-            MessageImageView(image: data.path.path)
+            //TODO: -Handle display multiple image here. Create a new collection image view
+//            for url in data.path {
+//                MessageImageView(image: data.path)
+//            }
+            Text("")
+            case .attachment(let data):
+            MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data))
         }
     }
     
@@ -78,7 +87,7 @@ struct MessageListView: View {
     }
 }
 
-#Preview {
-    @Previewable @FocusState var isFocused: Bool
-    MessageListView(reachedTop: Binding.constant(false), previousId: Binding.constant(0), messages: Binding.constant(mockMessages), isFocused: $isFocused)
-}
+//#Preview {
+//    @Previewable @FocusState var isFocused: Bool
+//    MessageListView(reachedTop: Binding.constant(false), previousId: Binding.constant(0), messages: Binding.constant(mockMessages), isFocused: $isFocused)
+//}

@@ -48,7 +48,6 @@ struct MediaMessageTextField: View {
             MessageTextField(text: text, didTapSend: { _ in
                 isShowingMedia.toggle()
             })
-            .opacity(0.5)
         }
         .animation(.linear, value: isShowingMedia)
     }
@@ -78,7 +77,6 @@ struct MediaMessageTextField: View {
         .fileImporter(isPresented: $isPresentedAttachment, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls):
-                urls.forEach { debugPrint($0.path) }
                 didSelectAttachments(urls)
             case .failure(let failure):
                 debugPrint("fileImporter with error: ", failure)
