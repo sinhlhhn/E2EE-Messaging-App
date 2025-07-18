@@ -15,6 +15,7 @@ struct ChatView: View {
     @State private var isScrollingUp: Bool = false
     
     @Bindable var viewModel: ChatViewModel
+    @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
     init(viewModel: ChatViewModel) {
@@ -29,9 +30,16 @@ struct ChatView: View {
                 .onTapGesture {
                     isFocused = false
                 }
-            MessageTextField() { text in
-                viewModel.sendMessage(text)
-            }
+            MediaMessageTextField(
+                imageSelection: $viewModel.imageSelection) { attachmentURLs in
+                    //TODO: -Deal with foreach here
+                    for attachmentURL in attachmentURLs {
+                        viewModel.sendMessage(.attachment(.init(path: attachmentURL)))
+                    }
+                    debugPrint(attachmentURLs)
+                } didTapSend: { text in
+                    viewModel.sendMessage(.text(.init(content: text)))
+                }
             .focused($isFocused)
             .padding()
         }
@@ -67,6 +75,6 @@ struct ChatView: View {
     }
 }
 
-#Preview {
-    ChatView(viewModel: ChatViewModel(sender: "slh", receiver: "", service: NullSocketService<String, TextMessage>(), messageService: NullMessageService(), didTapBack: {}))
-}
+//#Preview {
+//    ChatView(viewModel: ChatViewModel(sender: "slh", receiver: "", service: NullSocketService<String, SocketMessage>(), uploadService: NullUserService(), messageService: NullMessageService(), didTapBack: {}))
+//}

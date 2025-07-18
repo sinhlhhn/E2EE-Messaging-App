@@ -26,7 +26,20 @@ protocol NetworkModule {
     func uploadStreamRawData() -> AnyPublisher<Void, any Error>
     func downloadData(url: String) -> AnyPublisher<URL, Error>
     
-    func uploadFile() -> AnyPublisher<Void, Error>
+    func uploadFile(data: UploadFileData) -> AnyPublisher<Void, Error>
     
     func cancelRequest()
+}
+
+struct UploadFileData {
+    let url: URL
+    let fileSize: Int?
+    
+    var filePath: String {
+        url.path
+    }
+    
+    var fileName: String {
+        url.lastPathComponent
+    }
 }

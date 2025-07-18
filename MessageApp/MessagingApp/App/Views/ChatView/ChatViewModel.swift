@@ -9,12 +9,16 @@ import Foundation
 import Observation
 import Combine
 
+import SwiftUI
+import PhotosUI
+
 @Observable
 class ChatViewModel {
     //TODO: -should be let
     var sender: String
     var receiver: String
-    private let service: any SocketUseCase<String, TextMessage>
+    private let service: any SocketUseCase<String, SocketMessage>
+    private let uploadService: NetworkModule
     private let messageService: MessageUseCase
     var messages: [Message] = []
     var reachedTop: Bool = false
@@ -22,16 +26,27 @@ class ChatViewModel {
     private var firstMessageId: Int?
     var lastMessageId: Int?
     private var cancellable: AnyCancellable?
+    private var cancellables: Set<AnyCancellable> = []
     private var connectCancellable: AnyCancellable?
     private var fetchMessageCancellable: AnyCancellable?
     private let passthroughSubject = PassthroughSubject<FetchMessageData, Never>()
     
     private let didTapBack: () -> Void
     
-    init(sender: String, receiver: String, service: any SocketUseCase<String, TextMessage>, messageService: MessageUseCase, didTapBack: @escaping () -> Void) {
+    var imageSelection: PhotosPickerItem?
+    
+    init(
+        sender: String,
+        receiver: String,
+        service: any SocketUseCase<String, SocketMessage>,
+        uploadService: NetworkModule,
+        messageService: MessageUseCase,
+        didTapBack: @escaping () -> Void
+    ) {
         self.sender = sender
         self.receiver = receiver
         self.service = service
+        self.uploadService = uploadService
         self.messageService = messageService
         self.didTapBack = didTapBack
         fetchMessage()
@@ -48,7 +63,7 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] response in
                 if let id = Int(response.messageId) {
-                    self?.messages.append(Message(messageId: id, type: .text(.init(content: response.message)), isFromCurrentUser: false))
+                    self?.messages.append(Message(messageId: id, type: response.messageType, isFromCurrentUser: false))
                 } else {
                     debugPrint("❌ cannot get id from message")
                 }
@@ -72,9 +87,39 @@ class ChatViewModel {
             }
     }
     
-    func sendMessage(_ text: String) {
-        messages.append(Message(messageId: 0, type: .text(.init(content: text)), isFromCurrentUser: true))
-        service.sendMessage(TextMessage(messageId: "", sender: sender, receiver: receiver, message: text))
+    func sendMessage(_ type: MessageType) {
+        switch type {
+        case .text(let textData):
+            service.sendMessage(SocketMessage(messageId: "", sender: sender, receiver: receiver, messageType: type))
+        case .image(let VideoMessage):
+            //TODO: handle image
+            break
+        case .video(let videoData):
+            uploadService.uploadFile(data: UploadFileData(url: videoData.path, fileSize: videoData.fileSize))
+                .sink { completion in
+                    switch completion {
+                    case .finished: print("uploadFile finished")
+                    case .failure(let error): print("uploadFile failure")
+                    }
+                } receiveValue: { _ in
+                    print("uploadFile receiveValue")
+                }
+                .store(in: &cancellables)
+            
+        case .attachment(let attachment):
+            uploadService.uploadFile(data: UploadFileData(url: attachment.path, fileSize: attachment.fileSize))
+                .sink { completion in
+                    switch completion {
+                    case .finished: print("uploadFile finished")
+                    case .failure(let error): print("uploadFile failure")
+                    }
+                } receiveValue: { _ in
+                    print("uploadFile receiveValue")
+                }
+                .store(in: &cancellables)
+        }
+        messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
+        
     }
     
     func loadFirstMessage() {

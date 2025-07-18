@@ -165,8 +165,9 @@ final class AuthenticatedNetwork: NetworkModule {
 //        uploadNetwork.cancel(url: <#T##URL#>)
     }
     
-    func uploadFile() -> AnyPublisher<Void, Error> {
-        guard let url = URL(string: "\(localhost)upload/raw/freemusic.mp3") else {
+    func uploadFile(data: UploadFileData) -> AnyPublisher<Void, Error> {
+//        freemusic.mp3
+        guard let url = URL(string: "\(localhost)upload/raw/\(data.fileName)") else {
             return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
@@ -174,17 +175,12 @@ final class AuthenticatedNetwork: NetworkModule {
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         
-        let documentURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let fileURL = documentURL.appendingPathComponent("freemusic.mp3")
-        
-        let attributes = try! FileManager.default.attributesOfItem(atPath: fileURL.path)
-        if let fileSize = attributes[.size] as? NSNumber {
-            let contentLength = fileSize.intValue
+        if let contentLength = data.fileSize {
             request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")
             print("Content-Length: \(contentLength)")
         }
         
-        return uploadNetwork.upload(request: (request, .file(fileURL)))
+        return uploadNetwork.upload(request: (request, .file(data.url)))
             .tryMap { response in
                 switch response {
                 case .uploading(let percentage):

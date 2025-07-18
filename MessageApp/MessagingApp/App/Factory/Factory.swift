@@ -60,6 +60,7 @@ final class Factory {
     
     private lazy var keyStore = UserDefaultsKeyStoreService()
     private var chatViewModel: ChatViewModel?
+    private var messageAttachmentViewModel: MessageAttachmentViewModel?
     
     
     private var loginViewModel: LoginViewModel?
@@ -127,7 +128,7 @@ extension Factory {
             let secureKeyService = P256SecureKeyService()
             let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: authenticatedNetwork)
             let socketService = LocalSocketService(sessionDelegate: sessionDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
-            chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, messageService: messageService, didTapBack: didTapBack)
+            chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, uploadService: authenticatedNetwork, messageService: messageService, didTapBack: didTapBack)
         }
         
         guard let chatViewModel = chatViewModel else {

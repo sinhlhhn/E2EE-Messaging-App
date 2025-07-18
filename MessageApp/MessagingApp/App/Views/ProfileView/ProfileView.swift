@@ -27,18 +27,9 @@ struct ProfileView: View {
             } label: {
                 Text("Attach File")
             }
-            .fileImporter(isPresented: $isPresented, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
-                switch result {
-                case .success(let urls):
-                    viewModel.attachFile(urls.first!)
-                    print(urls.first?.path)
-                case .failure(let failure):
-                    print(failure)
-                }
-            }
             
             Button {
-                viewModel.uploadFile()
+//                viewModel.uploadFile()
             } label: {
                 Text("Upload File")
             }
@@ -76,27 +67,6 @@ class ProfileViewModel {
     
     func downloadData() {
         service.downloadImage()
-    }
-    
-    func attachFile(_ url: URL) {
-        uploadFile()
-    }
-    
-    func uploadFile() {
-        service.uploadFile()
-            .sink { _ in
-                
-            } receiveValue: { _ in
-                
-            }
-            .store(in: &cancellables)
-        service.uploadFile()
-            .sink { _ in
-                
-            } receiveValue: { _ in
-                
-            }
-            .store(in: &cancellables)
     }
     
     func uploadImage() {
@@ -159,10 +129,6 @@ class ProfileService: ProfileUseCase {
             }
             .eraseToAnyPublisher()
         
-    }
-    
-    func uploadFile() -> AnyPublisher<Void, Error> {
-        return network.uploadFile()
     }
     
     func cancel(image: ImageData) {
