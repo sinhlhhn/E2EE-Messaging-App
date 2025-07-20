@@ -28,6 +28,7 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
     
     func register(data: PasswordAuthentication) -> AnyPublisher<User, any Error> {
         let registerPublisher = unauthenticatedNetwork.registerUser(data: data)
+            .share()
         
         let userPublisher = registerPublisher
             .map { $0.user }

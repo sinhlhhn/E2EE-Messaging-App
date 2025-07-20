@@ -43,14 +43,16 @@ function initializeSocket(server) {
             // Emit to receiver if online
             const receiverSocket = connectedUsers.get(receiver);
             if (receiverSocket) {
-                receiverSocket.emit('receive-message', {
+                const payload = {
                     from: sender,
                     text,
                     mediaUrl,
                     mediaType,
                     messageId,
-                });
-                console.log('💌 send-message completed');
+                };
+                
+                receiverSocket.emit('receive-message', payload);
+                console.log("💌 Emitting to receiverSocket with data:", payload);
             } else {
                 console.error('send-message cannot find receiver', connectedUsers);
             }

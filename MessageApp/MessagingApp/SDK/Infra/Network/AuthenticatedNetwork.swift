@@ -58,7 +58,7 @@ final class AuthenticatedNetwork: NetworkModule {
         ])
         
         return network.perform(request: request)
-            .tryMap { data, response -> String in
+            .tryMap { data, response -> RequestCommonResponse in
                 try GenericMapper.map(data: data, response: response)
             }
             .map { _ in Void() }
@@ -75,7 +75,7 @@ final class AuthenticatedNetwork: NetworkModule {
         ])
         
         return network.perform(request: request)
-            .tryMap { data, response -> String in
+            .tryMap { data, response -> RequestCommonResponse in
                 try GenericMapper.map(data: data, response: response)
             }
             .map { _ in Void() }
@@ -165,10 +165,12 @@ final class AuthenticatedNetwork: NetworkModule {
 //        uploadNetwork.cancel(url: <#T##URL#>)
     }
     
-    func uploadFile(data: UploadFileData) -> AnyPublisher<Void, Error> {
+    
+    
+    func uploadFile(data: UploadFileData) -> AnyPublisher<UploadDataResponse, Error> {
 //        freemusic.mp3
         guard let url = URL(string: "\(localhost)upload/raw/\(data.fileName)") else {
-            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+            return Fail<UploadDataResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         var request = URLRequest(url: url)
@@ -181,17 +183,19 @@ final class AuthenticatedNetwork: NetworkModule {
         }
         
         return uploadNetwork.upload(request: (request, .file(data.url)))
-            .tryMap { response in
+            .tryCompactMap { response -> UploadDataResponse? in
                 switch response {
                 case .uploading(let percentage):
                     print(percentage)
+                    return nil
                 case .uploaded(let data, let response):
-                    guard response.statusCode == 200 else {
+                    guard response.statusCode == 200, let data = data else {
                         let error = URLError(.badServerResponse)
                         throw error
                     }
+                    let result: UploadDataResponse = try GenericMapper.map(data: data, response: response)
+                    return result
                 }
-                return Void()
             }
             .eraseToAnyPublisher()
     }

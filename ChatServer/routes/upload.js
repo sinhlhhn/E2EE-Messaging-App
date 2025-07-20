@@ -3,9 +3,15 @@ const router = express.Router();
 const upload = require("../storage/storage");
 const path = require('path');
 const fs = require('fs');
+const authenticateToken = require('../middlewares/auth');
+
+router.use(authenticateToken);
 
 router.post('/upload', upload.single('media'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  if (!req.file) {
+    console.log("No file uploaded");
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
   // Extract the subfolder from the file path to build the correct relative URL
   const relativePath = req.file.path.split("uploads")[1]
@@ -17,11 +23,13 @@ router.post('/upload', upload.single('media'), (req, res) => {
   });
 });
 
-router.post("/upload/raw/:filename", (req, res) => {
+router.post("/upload/raw/:filename", authenticateToken, (req, res) => {
+  console.log("Start upload...");
   const filename = req.params.filename;
-  const userId = req.query.userId;
+  const userId = req.user.sub;
 
   if (!userId) {
+    console.log("Missing userId query param", req.user);
     return res.status(400).json({ error: "Missing userId query param" });
   }
 

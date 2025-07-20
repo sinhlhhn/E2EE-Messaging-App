@@ -26,7 +26,7 @@ protocol NetworkModule {
     func uploadStreamRawData() -> AnyPublisher<Void, any Error>
     func downloadData(url: String) -> AnyPublisher<URL, Error>
     
-    func uploadFile(data: UploadFileData) -> AnyPublisher<Void, Error>
+    func uploadFile(data: UploadFileData) -> AnyPublisher<UploadDataResponse, Error>
     
     func cancelRequest()
 }

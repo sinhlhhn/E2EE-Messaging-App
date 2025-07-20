@@ -45,8 +45,9 @@ struct MediaMessageTextField: View {
             if isShowingMedia {
                 mediaView
             }
-            MessageTextField(text: text, didTapSend: { _ in
-                isShowingMedia.toggle()
+            MessageTextField(text: text, didTapSend: { text in
+//                isShowingMedia.toggle()
+                didTapSend(text)
             })
         }
         .animation(.linear, value: isShowingMedia)

@@ -14,3 +14,11 @@ struct MessageResponse: Codable {
     let text: String
     let createdAt: String
 }
+
+struct UploadDataResponse: Decodable {
+    let path: String
+}
+
+struct RequestCommonResponse: Decodable {
+    let success: Bool
+}
