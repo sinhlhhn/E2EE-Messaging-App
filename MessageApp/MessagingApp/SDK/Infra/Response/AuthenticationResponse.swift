@@ -9,4 +9,10 @@
 struct AuthenticationResponse: Decodable {
     let accessToken: String
     let refreshToken: String
+    let user: User
+}
+
+struct TokenResponse: Decodable {
+    let accessToken: String
+    let refreshToken: String
 }

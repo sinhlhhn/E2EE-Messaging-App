@@ -34,6 +34,7 @@ protocol NetworkModule {
 struct UploadFileData {
     let url: URL
     let fileSize: Int?
+    let userId: String
     
     var filePath: String {
         url.path

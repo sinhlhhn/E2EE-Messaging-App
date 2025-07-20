@@ -10,6 +10,6 @@ import Foundation
 import Combine
 protocol AuthenticationUseCase<Authentication> {
     associatedtype Authentication
-    func login(data: Authentication) -> AnyPublisher<Void, Error>
-    func register(data: Authentication) -> AnyPublisher<Void, Error>
+    func login(data: Authentication) -> AnyPublisher<User, Error>
+    func register(data: Authentication) -> AnyPublisher<User, Error>
 }

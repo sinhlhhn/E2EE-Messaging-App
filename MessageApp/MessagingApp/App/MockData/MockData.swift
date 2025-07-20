@@ -55,18 +55,18 @@ final class NullSocketService<User, Message>: SocketUseCase {
 }
 
 final class NullAuthenticationService<Authentication>: AuthenticationUseCase {
-    func login(data: Authentication) -> AnyPublisher<Void, Error> {
-        Empty<Void, Error>().eraseToAnyPublisher()
+    func login(data: Authentication) -> AnyPublisher<User, Error> {
+        Empty().eraseToAnyPublisher()
     }
     
-    func register(data: Authentication) -> AnyPublisher<Void, any Error> {
-        Empty<Void, Error>().eraseToAnyPublisher()
+    func register(data: Authentication) -> AnyPublisher<User, any Error> {
+        Empty().eraseToAnyPublisher()
     }
 }
 
 final class NullUserService: UserUseCase {
     func fetchUsers() -> AnyPublisher<[User], any Error> {
-        Empty<[User], Error>().eraseToAnyPublisher()
+        Empty().eraseToAnyPublisher()
     }
 }
 

@@ -15,7 +15,7 @@ import PhotosUI
 @Observable
 class ChatViewModel {
     //TODO: -should be let
-    var sender: String
+    var sender: User
     var receiver: String
     private let service: any SocketUseCase<String, SocketMessage>
     private let uploadService: NetworkModule
@@ -36,7 +36,7 @@ class ChatViewModel {
     var imageSelection: PhotosPickerItem?
     
     init(
-        sender: String,
+        sender: User,
         receiver: String,
         service: any SocketUseCase<String, SocketMessage>,
         uploadService: NetworkModule,
@@ -73,7 +73,7 @@ class ChatViewModel {
     }
     
     private func connect() {
-        connectCancellable = service.connect(user: sender)
+        connectCancellable = service.connect(user: sender.username)
             .sink { completion in
                 switch completion {
                     case .finished: debugPrint("socket finished")
@@ -90,12 +90,12 @@ class ChatViewModel {
     func sendMessage(_ type: MessageType) {
         switch type {
         case .text(let textData):
-            service.sendMessage(SocketMessage(messageId: "", sender: sender, receiver: receiver, messageType: type))
+            service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type))
         case .image(let VideoMessage):
             //TODO: handle image
             break
         case .video(let videoData):
-            uploadService.uploadFile(data: UploadFileData(url: videoData.path, fileSize: videoData.fileSize))
+            uploadService.uploadFile(data: UploadFileData(url: videoData.path, fileSize: videoData.fileSize, userId: String(sender.id)))
                 .sink { completion in
                     switch completion {
                     case .finished: print("uploadFile finished")
@@ -107,7 +107,7 @@ class ChatViewModel {
                 .store(in: &cancellables)
             
         case .attachment(let attachment):
-            uploadService.uploadFile(data: UploadFileData(url: attachment.path, fileSize: attachment.fileSize))
+            uploadService.uploadFile(data: UploadFileData(url: attachment.path, fileSize: attachment.fileSize, userId: String(sender.id)))
                 .sink { completion in
                     switch completion {
                     case .finished: print("uploadFile finished")
@@ -123,11 +123,11 @@ class ChatViewModel {
     }
     
     func loadFirstMessage() {
-        passthroughSubject.send(FetchMessageData(sender: sender, receiver: receiver, firstLoad: true))
+        passthroughSubject.send(FetchMessageData(sender: sender.username, receiver: receiver, firstLoad: true))
     }
     
     func loadMoreMessages() {
-        passthroughSubject.send(FetchMessageData(sender: sender, receiver: receiver, before: firstMessageId, limit: 10, firstLoad: false))
+        passthroughSubject.send(FetchMessageData(sender: sender.username, receiver: receiver, before: firstMessageId, limit: 10, firstLoad: false))
     }
     
     private func fetchMessage() {
