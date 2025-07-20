@@ -8,4 +8,10 @@
 struct AuthenticationModel {
     let accessToken: String
     let refreshToken: String
+    let user: User
+}
+
+struct TokenModel {
+    let accessToken: String
+    let refreshToken: String
 }

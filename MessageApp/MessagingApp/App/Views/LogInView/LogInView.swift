@@ -35,11 +35,11 @@ import Combine
 @Observable
 class LoginViewModel {
     let service: any AuthenticationUseCase<PasswordAuthentication>
-    private let didLogin: (String) -> Void
+    private let didLogin: (User) -> Void
     
     private var cancellables: Set<AnyCancellable> = []
     
-    init(service: any AuthenticationUseCase<PasswordAuthentication>, didLogin: @escaping (String) -> Void) {
+    init(service: any AuthenticationUseCase<PasswordAuthentication>, didLogin: @escaping (User) -> Void) {
         self.service = service
         self.didLogin = didLogin
     }
@@ -48,8 +48,8 @@ class LoginViewModel {
         service.login(data: .init(email: email, password: password))
             .sink { completion in
                 debugPrint("logIn completed \(completion)")
-            } receiveValue: { [weak self] isLoggedIn in
-                self?.didLogin(email)
+            } receiveValue: { [weak self] user in
+                self?.didLogin(user)
             }
             .store(in: &cancellables)
 
@@ -59,8 +59,8 @@ class LoginViewModel {
         service.register(data: .init(email: email, password: password))
             .sink { completion in
                 debugPrint("register completed \(completion)")
-            } receiveValue: { [weak self] isLoggedIn in
-                self?.didLogin(email)
+            } receiveValue: { [weak self] user in
+                self?.didLogin(user)
             }
             .store(in: &cancellables)
     }

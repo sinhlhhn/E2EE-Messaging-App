@@ -12,6 +12,7 @@ extension String {
     static let secureKey = "SECURE_KEY"
     static let refreshToken = "REFRESH_TOKEN"
     static let userName = "USER_NAME"
+    static let userId = "USER_ID"
 }
 
 final class UserDefaultsKeyStoreService: KeyStoreModule {

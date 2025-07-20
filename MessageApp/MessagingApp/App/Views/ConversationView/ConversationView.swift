@@ -56,15 +56,15 @@ import Combine
 @Observable
 class ConversationViewModel {
     var users: [User] = []
-    var sender: String
+    var sender: User
     
     private let service: UserUseCase
     private let logOutUseCase: LogOutUseCase
     private var cancellables: Set<AnyCancellable> = []
-    private let didTapItem: (String, String) -> Void
+    private let didTapItem: (User, String) -> Void
     private let didTapLogOut: () -> Void
     
-    init(sender: String, logOutUseCase: LogOutUseCase, service: UserUseCase, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) {
+    init(sender: User, logOutUseCase: LogOutUseCase, service: UserUseCase, didTapItem: @escaping (User, String) -> Void, didTapLogOut: @escaping () -> Void) {
         self.logOutUseCase = logOutUseCase
         self.sender = sender
         self.service = service
@@ -94,7 +94,7 @@ class ConversationViewModel {
     }
     
     func logout() {
-        logOutUseCase.logOut(userName: sender)
+        logOutUseCase.logOut(userName: sender.username)
             .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
@@ -111,5 +111,5 @@ class ConversationViewModel {
 }
 
 #Preview {
-    ConversationView(viewModel: ConversationViewModel(sender: "", logOutUseCase: NullLogOutUseCase(), service: NullUserService(), didTapItem: { _, _ in }, didTapLogOut: {}))
+    ConversationView(viewModel: ConversationViewModel(sender: User(id: 0, username: ""), logOutUseCase: NullLogOutUseCase(), service: NullUserService(), didTapItem: { _, _ in }, didTapLogOut: {}))
 }

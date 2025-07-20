@@ -13,11 +13,11 @@ final class SplashViewModel {
     private let tokenProvider: TokenProvider
     private let keyStore: KeyStoreModule
     let needAuth: () -> Void
-    let didAuth: (String) -> Void
+    let didAuth: (User) -> Void
     
     private var cancellables: Set<AnyCancellable> = []
     
-    init(tokenProvider: TokenProvider, keyStore: KeyStoreModule, needAuth: @escaping () -> Void, didAuth: @escaping (String) -> Void) {
+    init(tokenProvider: TokenProvider, keyStore: KeyStoreModule, needAuth: @escaping () -> Void, didAuth: @escaping (User) -> Void) {
         self.tokenProvider = tokenProvider
         self.keyStore = keyStore
         self.needAuth = needAuth
@@ -44,9 +44,11 @@ final class SplashViewModel {
     }
     
     func checkAuthentication() {
-        let isAuthent: String? = self.keyStore.retrieve(key: .refreshToken)
-        if let _ = isAuthent, let user: String = self.keyStore.retrieve(key: .userName) {
-            didAuth(user)
+        let isAuthenticated: String? = self.keyStore.retrieve(key: .refreshToken)
+        if let _ = isAuthenticated,
+           let userName: String = self.keyStore.retrieve(key: .userName),
+           let userId: Int = self.keyStore.retrieve(key: .userId) {
+            didAuth(User(id: userId, username: userName))
         } else {
             needAuth()
         }

@@ -69,7 +69,7 @@ final class Factory {
 
 // Root
 extension Factory {
-    func createRootView(didLogin: @escaping () -> Void, didGoToConversation: @escaping (String) -> Void) -> some View {
+    func createRootView(didLogin: @escaping () -> Void, didGoToConversation: @escaping (User) -> Void) -> some View {
         let viewModel = SplashViewModel(tokenProvider: tokenProvider, keyStore: keyStore, needAuth: didLogin, didAuth: didGoToConversation)
         
         return SplashView(viewModel: viewModel)
@@ -79,7 +79,7 @@ extension Factory {
             }
     }
     
-    func createLogIn(didLogin: @escaping (String) -> Void) -> some View {
+    func createLogIn(didLogin: @escaping (User) -> Void) -> some View {
         if loginViewModel == nil {
             let secureKeyService = P256SecureKeyService()
             let restoreKey = RemoteRestoreKeyModule()
@@ -105,7 +105,7 @@ extension Factory {
         return ProfileView(viewModel: profileViewModel)
     }
     
-    func createConversation(sender: String, didTapItem: @escaping (String, String) -> Void, didTapLogOut: @escaping () -> Void) -> some View {
+    func createConversation(sender: User, didTapItem: @escaping (User, String) -> Void, didTapLogOut: @escaping () -> Void) -> some View {
         if conversationViewModel == nil {
             let userService = RemoteUserService(network: authenticatedNetwork)
             let logOut = RemoteLogOutUseCase(network: authenticatedNetwork, keyStore: keyStore)
@@ -121,7 +121,7 @@ extension Factory {
         return ConversationView(viewModel: conversationViewModel)
     }
     
-    func createChat(sender: String, receiver: String, didTapBack: @escaping () -> Void) -> some View {
+    func createChat(sender: User, receiver: String, didTapBack: @escaping () -> Void) -> some View {
         if chatViewModel == nil {
             let encryptService = AESEncryptService()
             let decryptService = AESDecryption()
@@ -138,7 +138,14 @@ extension Factory {
         chatViewModel.sender = sender
         chatViewModel.receiver = receiver
         
-        return ChatView(viewModel: chatViewModel)
+        return ChatView(viewModel: chatViewModel, didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel)
+    }
+    
+    private func createAttachmentMessageViewModel(attachmentMessage: AttachmentMessage) -> MessageAttachmentViewModel {
+        if messageAttachmentViewModel == nil {
+            messageAttachmentViewModel = MessageAttachmentViewModel(url: attachmentMessage.path, downloadNetwork: authenticatedNetwork)
+        }
+        return messageAttachmentViewModel!
     }
 }
 

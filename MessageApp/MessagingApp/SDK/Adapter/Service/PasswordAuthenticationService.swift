@@ -26,10 +26,20 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
         self.restoreKey = restoreKey
     }
     
-    func register(data: PasswordAuthentication) -> AnyPublisher<Void, any Error> {
-        return unauthenticatedNetwork.registerUser(data: data)
-            .map { data in
-                self.keyStore.store(key: .refreshToken, value: data.refreshToken)
+    func register(data: PasswordAuthentication) -> AnyPublisher<User, any Error> {
+        let registerPublisher = unauthenticatedNetwork.registerUser(data: data)
+        
+        let userPublisher = registerPublisher
+            .map { $0.user }
+            .handleEvents(receiveOutput: { [weak self] user in
+                self?.storeUserInformation(user)
+            })
+            .first()
+            .eraseToAnyPublisher()
+        
+        let keyPublisher = registerPublisher
+            .map { authenticationModel in
+                self.keyStore.store(key: .refreshToken, value: authenticationModel.refreshToken)
             }
             .flatMap { _ in
                 let exchangeKey = self.secureKey.generateExchangeKey()
@@ -43,15 +53,27 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
             .flatMap { encryptedKey, salt in
                 return self.network.sendBackupKey(user: data.email, salt: salt.base64EncodedString(), encryptedKey: encryptedKey.base64EncodedString())
             }
-            .handleEvents(receiveOutput: { [weak self] _ in
-                self?.keyStore.store(key: .userName, value: data.email)
-            })
             .first()
+            .eraseToAnyPublisher()
+        
+        return Publishers.Zip(userPublisher, keyPublisher)
+            .map { user, _ in user }
             .eraseToAnyPublisher()
     }
     
-    func login(data: PasswordAuthentication) -> AnyPublisher<Void, Error> {
-        unauthenticatedNetwork.logInUser(data: data)
+    func login(data: PasswordAuthentication) -> AnyPublisher<User, Error> {
+        let loginPublisher = unauthenticatedNetwork.logInUser(data: data)
+            .share()
+
+        let userPublisher = loginPublisher
+            .map { $0.user }
+            .handleEvents(receiveOutput: { [weak self] user in
+                self?.storeUserInformation(user)
+            })
+            .first()
+            .eraseToAnyPublisher()
+
+        let keyPublisher = loginPublisher
             .map { data in
                 self.keyStore.store(key: .refreshToken, value: data.refreshToken)
             }
@@ -63,10 +85,17 @@ final class PasswordAuthenticationService: AuthenticationUseCase {
             }
             .map { key in
                 self.keyStore.store(key: .privateKey, value: key)
-                self.keyStore.store(key: .userName, value: data.email)
-                return ()
             }
             .first()
             .eraseToAnyPublisher()
+
+        return Publishers.Zip(userPublisher, keyPublisher)
+            .map { user, _ in user }
+            .eraseToAnyPublisher()
+    }
+    
+    private func storeUserInformation(_ user: User) {
+        keyStore.store(key: .userName, value: user.username)
+        keyStore.store(key: .userId, value: user.id)
     }
 }

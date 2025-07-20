@@ -8,7 +8,7 @@
 import Combine
 
 enum AuthenticationState {
-    case loggedIn(String)
+    case loggedIn(User)
     case loggedOut
 }
 
