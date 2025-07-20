@@ -28,7 +28,7 @@ struct SocketMessage: SocketData {
             //TODO: -handle send video via socket
             return ["":""]
         case .attachment(let attachmentMessage):
-            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path]
+            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path]
         }
         
     }

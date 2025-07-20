@@ -15,18 +15,29 @@ struct ChatView: View {
     @State private var isScrollingUp: Bool = false
     
     @Bindable var viewModel: ChatViewModel
-    @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
-    init(viewModel: ChatViewModel) {
+    private let didCreateMessageAttachmentViewModel: (AttachmentMessage) -> MessageAttachmentViewModel
+    
+    init(
+        viewModel: ChatViewModel,
+        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel
+    ) {
         self.viewModel = viewModel
+        self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
     }
     
     var body: some View {
         VStack {
             Text("Sender: \(viewModel.sender)")
             Text("Receiver: \(viewModel.receiver)")
-            MessageListView(reachedTop: $viewModel.reachedTop, previousId: $viewModel.lastMessageId, messages: $viewModel.messages, isFocused: $isFocused)
+            MessageListView(
+                reachedTop: $viewModel.reachedTop,
+                previousId: $viewModel.lastMessageId,
+                messages: $viewModel.messages,
+                isFocused: $isFocused,
+                didCreateMessageAttachmentViewModel: didCreateMessageAttachmentViewModel
+            )
                 .onTapGesture {
                     isFocused = false
                 }

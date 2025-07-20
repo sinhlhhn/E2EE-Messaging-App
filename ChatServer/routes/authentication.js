@@ -8,7 +8,10 @@ const SALT_ROUNDS = 10;
 router.post("/register", async (req, res) => {
   console.log("CALL /register: ");
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+  if (!username || !password) {
+    console.log("Username and password required");
+    return res.status(400).json({ error: "Username and password required" });
+  }
 
   const existing = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
   if (existing) return res.status(409).json({ error: "Username already exists" });
@@ -19,13 +22,23 @@ router.post("/register", async (req, res) => {
 
   const { accessToken, refreshToken } = generateTokenPair(userId, username);
 
-  res.json({ accessToken, refreshToken });
+  res.json({
+    accessToken,
+    refreshToken,
+    user: {
+      id: userId,
+      username: username
+    }
+  });
 });
 
 router.post("/login", async (req, res) => {
   console.log("CALL /login: ");
   const { username, password } = req.body;
-  if (!username || !password) return res.status(400).json({ error: "Username and password required" });
+  if (!username || !password) {
+    console.log("Username and password required");
+    return res.status(400).json({ error: "Username and password required" });
+  }
 
   const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
   if (!user) return res.status(404).json({ error: "User not found" });
@@ -35,13 +48,23 @@ router.post("/login", async (req, res) => {
 
   const { accessToken, refreshToken } = generateTokenPair(user.id, user.username);
 
-  res.json({ accessToken, refreshToken });
+  res.json({
+    accessToken,
+    refreshToken,
+    user: {
+      id: user.id,
+      username: user.username
+    }
+  });
 });
 
 router.post("/token", (req, res) => {
   console.log("CALL /token: ");
   const { token } = req.body;
-  if (!token) return res.status(400).json({ error: "Missing refresh token" });
+  if (!token) {
+    console.log("Missing refresh token");
+    return res.status(400).json({ error: "Missing refresh token" });
+  }
 
   const record = db.prepare("SELECT * FROM refresh_tokens WHERE token = ?").get(token);
   if (!record) return res.status(403).json({ error: "Invalid refresh token" });

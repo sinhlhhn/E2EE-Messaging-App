@@ -1,33 +1,14 @@
-const jwt = require("jsonwebtoken");
+
 const express = require("express");
 const router = express.Router();
 const db = require("../db/index");
 
+const authenticateToken = require('../middlewares/auth');
 // cryptor
 const crypto = require("crypto");
 
 function generateSalt(byteLength = 32) {
   return crypto.randomBytes(byteLength).toString("base64");
-}
-
-function authenticateToken(req, res, next) {
-  console.log("Checking authentication...");
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Expect "Bearer <token>"
-
-  if (!token) {
-    return res.status(401).json({ error: "Access token required" });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) {
-      return res.status(403).json({ error: "Invalid or expired token" });
-    }
-
-    req.user = user; // Example: { sub: 1, username: "alice", iat: ..., exp: ... }
-    console.log("Valid user 👨‍💻");
-    next();
-  });
 }
 
 router.use(authenticateToken);
@@ -93,7 +74,7 @@ router.get('/messages/:userA/:userB', (req, res) => {
   if (!a || !b) return res.status(404).json({ error: 'User not found' });
 
   const stmt = db.prepare(`
-    SELECT messages.id, users.username AS sender, messages.receiverId, messages.text, messages.createdAt
+    SELECT messages.id, users.username AS sender, messages.receiverId, messages.groupId, messages.text, messages.mediaUrl, messages.mediaType, messages.createdAt
     FROM messages
     JOIN users ON users.id = messages.senderId
     WHERE
@@ -114,6 +95,7 @@ router.post("/keys", (req, res) => {
   const { username, publicKey } = req.body;
 
   if (!username || !publicKey) {
+    console.log("Missing username or publicKey");
     return res.status(400).json({ error: "Missing username or publicKey" });
   }
 

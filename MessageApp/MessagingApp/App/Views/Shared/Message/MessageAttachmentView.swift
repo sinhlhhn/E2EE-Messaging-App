@@ -58,6 +58,7 @@ class MessageAttachmentViewModel {
     init(url: URL, downloadNetwork: NetworkModule) {
         self.url = url
         self.downloadNetwork = downloadNetwork
+        getData()
     }
     
     func getData() {

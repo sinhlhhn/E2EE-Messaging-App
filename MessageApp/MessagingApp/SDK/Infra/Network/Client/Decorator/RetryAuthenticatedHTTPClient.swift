@@ -20,17 +20,17 @@ final class RetryAuthenticatedHTTPClient: HTTPClient {
         return client.perform(request: request)
             .flatMap { (data, response) in
                 if response.statusCode != 200 {
-                    return self.performWithRetry(request, retryTimes: retryTimes)
+                    return self.performWithRetry(request, retryTimes: retryTimes, data: (data, response))
                 }
                 return Just((data, response)).setFailureType(to: Error.self).eraseToAnyPublisher()
             }
             .eraseToAnyPublisher()
     }
     
-    private func performWithRetry(_ request: URLRequest, retryTimes: Int) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
+    private func performWithRetry(_ request: URLRequest, retryTimes: Int, data: (Data, HTTPURLResponse)) -> AnyPublisher<(Data, HTTPURLResponse), any Error> {
         if retryTimes == 0 {
-            return Fail<(Data, HTTPURLResponse), any Error>(error: NSError(domain: "", code: 1)).eraseToAnyPublisher() // should log out
+            return Just(data).setFailureType(to: Error.self).eraseToAnyPublisher()
         }
-        return performWithRetry(request, retryTimes: retryTimes - 1)
+        return performWithRetry(request, retryTimes: retryTimes - 1, data: data)
     }
 }

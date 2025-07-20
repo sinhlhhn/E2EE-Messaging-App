@@ -31,7 +31,7 @@ final class UnauthenticatedNetwork: UnauthenticatedNetworking {
                 
                 let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
                 
-                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken, user: model.user)
             }
             .eraseToAnyPublisher()
     }
@@ -51,7 +51,7 @@ final class UnauthenticatedNetwork: UnauthenticatedNetworking {
                 
                 let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
                 
-                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
+                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken, user: model.user)
             }
             .eraseToAnyPublisher()
     }

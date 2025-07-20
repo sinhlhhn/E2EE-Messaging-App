@@ -113,8 +113,9 @@ class ChatViewModel {
                     case .finished: print("uploadFile finished")
                     case .failure(let error): print("uploadFile failure")
                     }
-                } receiveValue: { _ in
+                } receiveValue: { response in
                     print("uploadFile receiveValue")
+                    self.service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: .attachment(.init(path: URL(string: response.path)!))))
                 }
                 .store(in: &cancellables)
         }

@@ -15,7 +15,6 @@ struct MessageListView: View {
     @State private var isScrollUp: Bool = false
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
-    var messageAttachmentViewModel: MessageAttachmentViewModel
     
     var body: some View {
         ScrollViewReader { proxy in

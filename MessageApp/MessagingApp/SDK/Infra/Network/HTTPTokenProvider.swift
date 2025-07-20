@@ -88,9 +88,9 @@ final class HTTPTokenProvider: TokenProvider {
         }
     }
     
-    private func performRefresh(refreshToken: String?) -> AnyPublisher<AuthenticationModel, Error> {
+    private func performRefresh(refreshToken: String?) -> AnyPublisher<TokenModel, Error> {
         guard let refreshToken = refreshToken else {
-            return Fail<AuthenticationModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
+            return Fail<TokenModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
         }
         let urlString = "\(localhost)auth/token"
         
@@ -108,9 +108,9 @@ final class HTTPTokenProvider: TokenProvider {
                     throw error
                 }
                 
-                let model = try JSONDecoder().decode(AuthenticationResponse.self, from: data)
+                let model = try JSONDecoder().decode(TokenResponse.self, from: data)
                 
-                return AuthenticationModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
+                return TokenModel(accessToken: model.accessToken, refreshToken: model.refreshToken)
             }
             .first()
             .eraseToAnyPublisher()
