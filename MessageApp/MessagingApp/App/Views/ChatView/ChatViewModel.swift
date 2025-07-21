@@ -113,9 +113,11 @@ class ChatViewModel {
                     case .finished: print("uploadFile finished")
                     case .failure(let error): print("uploadFile failure")
                     }
-                } receiveValue: { response in
+                } receiveValue: { [weak self] response in
+                    guard let self else { return }
                     print("uploadFile receiveValue")
-                    self.service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: .attachment(.init(path: URL(string: response.path)!))))
+                    //TODO: -Currently, the owner also need to download the file from the server and then save to the Document/Download folder. We may need to move the file to the Document/Download folder to prevent unnecessary network call. It quite complex because currently, we let the server to generate the file name to avoid duplicated file.
+                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: .attachment(.init(path: URL(string: response.path)!))))
                 }
                 .store(in: &cancellables)
         }
