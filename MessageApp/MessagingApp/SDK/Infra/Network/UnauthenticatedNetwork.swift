@@ -17,7 +17,7 @@ final class UnauthenticatedNetwork: UnauthenticatedNetworking {
     }
     
     func registerUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, Error> {
-        let urlString = "\(localhost)auth/register"
+        let urlString = "\(localhost)/auth/register"
         
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         
@@ -37,7 +37,7 @@ final class UnauthenticatedNetwork: UnauthenticatedNetworking {
     }
     
     func logInUser(data: PasswordAuthentication) -> AnyPublisher<AuthenticationModel, any Error> {
-        let urlString = "\(localhost)auth/login"
+        let urlString = "\(localhost)/auth/login"
         
         let request = buildRequest(url: urlString, method: .post, body: try? data.asDictionary())
         

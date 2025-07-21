@@ -69,13 +69,15 @@ class RemoteMessageService: MessageUseCase {
                 //TODO: -handle image
                 return Message(messageId: message.messageId, type: .text(.init(content: "text")), isFromCurrentUser: message.isFromCurrentUser)
             case .video(let data):
-                let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.getData()) ?? Data())
+                let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
                 let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
                 let path = URL(string: text)!
                 return Message(messageId: message.messageId, type: .video(.init(path: path)), isFromCurrentUser: message.isFromCurrentUser)
             case .attachment(let data):
-                //TODO: -handle attachment
-                return Message(messageId: message.messageId, type: .text(.init(content: "text")), isFromCurrentUser: message.isFromCurrentUser)
+                let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
+                let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
+                let path = URL(string: text)!
+                return Message(messageId: message.messageId, type: .attachment(.init(path: path)), isFromCurrentUser: message.isFromCurrentUser)
             }
         }
         

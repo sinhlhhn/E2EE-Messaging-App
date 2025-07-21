@@ -11,7 +11,9 @@ struct MessageResponse: Codable {
     let id: Int
     let sender: String
     let receiverId: Int
-    let text: String
+    let text: String?
+    let mediaUrl: String?
+    let mediaType: String
     let createdAt: String
 }
 

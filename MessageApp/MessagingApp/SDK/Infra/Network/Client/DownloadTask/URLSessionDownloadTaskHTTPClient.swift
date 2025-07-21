@@ -30,7 +30,21 @@ final class URLSessionDownloadTaskHTTPClient: DownloadTaskHTTPClient, TaskCancel
         
         // Using a completion handler with a download task prevents `urlSession(_:downloadTask:didWriteData:totalBytesWritten:totalBytesExpectedToWrite:)` from being called.
         // If we want to track progress while using a completion handler, we must use `task.progress.publisher`.
-        let task = session.downloadTask(with: request)
+        let task = session.downloadTask(with: request) { url, response, error in
+            guard let httpResponse = response as? HTTPURLResponse else {
+                subject.send(completion: .failure(InvalidHTTPResponseError()))
+                return
+            }
+            debugPrint("🌪️ Status code: \(httpResponse.statusCode)")
+            subject.send(.downloaded(url: url, response: httpResponse))
+            subject.send(completion: .finished)
+        }
+        
+        task.progress.publisher(for: \.fractionCompleted)
+            .sink { progress in
+                subject.send(.downloading(percentage: progress))
+            }
+            .store(in: &cancellables)
         
         updateTask(task, url: url)
         updateTaskSubject(subject, url: url)

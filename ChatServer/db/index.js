@@ -19,6 +19,7 @@ const db = new Database(DB_PATH);
 
 // if (true) {
 console.log('Creating new database and initializing tables...');
+// db.prepare(`DROP TABLE IF EXISTS messages`).run();
 // user
 db.prepare(`
   CREATE TABLE IF NOT EXISTS users (
