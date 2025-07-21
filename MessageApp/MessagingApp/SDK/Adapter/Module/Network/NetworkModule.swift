@@ -24,11 +24,16 @@ protocol NetworkModule {
     
     func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<Void, Error>
     func uploadStreamRawData() -> AnyPublisher<Void, any Error>
-    func downloadData(url: String) -> AnyPublisher<URL, Error>
+    func downloadData(url: String) -> AnyPublisher<AppDownloadResponse, Error>
     
     func uploadFile(data: UploadFileData) -> AnyPublisher<UploadDataResponse, Error>
     
     func cancelRequest()
+}
+
+enum AppDownloadResponse {
+    case downloading(Double)
+    case downloaded(URL, String)
 }
 
 struct UploadFileData {

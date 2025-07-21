@@ -9,7 +9,7 @@ import Foundation
 import Combine
 
 //let localhost = "http://localhost:3000/"
-let localhost = "https://localhost:3000/"
+let localhost = "https://localhost:3000"
 
 final class AuthenticatedNetwork: NetworkModule {
     private let network: DataTaskHTTPClient
@@ -34,7 +34,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     //MARK: -Authentication Flow
     func logOut(userName: String) -> AnyPublisher<Void, any Error> {
-        let urlString = "\(localhost)api/logout"
+        let urlString = "\(localhost)/api/logout"
         let request = buildRequest(url: urlString, method: .post, body: ["username": userName])
         
         return network.perform(request: request)
@@ -50,7 +50,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func sendPublicKey(user: String, publicKey: Data) -> AnyPublisher<Void, Error> {
-        let urlString = "\(localhost)api/keys"
+        let urlString = "\(localhost)/api/keys"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
@@ -66,7 +66,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func sendBackupKey(user: String, salt: String, encryptedKey: String) -> AnyPublisher<Void, Error> {
-        let urlString = "\(localhost)api/key-backup"
+        let urlString = "\(localhost)/api/key-backup"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "username": user,
@@ -83,7 +83,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchRestoreKey(username: String) -> AnyPublisher<RestoreKeyModel, Error> {
-        let urlString = "\(localhost)api/key-backup/\(username)"
+        let urlString = "\(localhost)/api/key-backup/\(username)"
         
         let request = buildRequest(url: urlString)
         
@@ -97,7 +97,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     //MARK: -User
     func fetchUsers() -> AnyPublisher<[User], Error> {
-        let urlString = "\(localhost)api/users"
+        let urlString = "\(localhost)/api/users"
         
         let request = buildRequest(url: urlString)
         
@@ -111,7 +111,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     //MARK: -Conversation
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error> {
-        let urlString = "\(localhost)api/session"
+        let urlString = "\(localhost)/api/session"
         
         let request = buildRequest(url: urlString, method: .post, body: [
             "senderUsername": sender,
@@ -127,7 +127,7 @@ final class AuthenticatedNetwork: NetworkModule {
     }
     
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error> {
-        let urlString = "\(localhost)api/keys/\(username)"
+        let urlString = "\(localhost)/api/keys/\(username)"
         
         let request = buildRequest(url: urlString)
         
@@ -141,7 +141,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error> {
         let sender = data.sender
-        let urlString = "\(localhost)api/messages/\(data.sender)/\(data.receiver)"
+        let urlString = "\(localhost)/api/messages/\(data.sender)/\(data.receiver)"
         
         var params = [String: Any]()
         if let before = data.before {
@@ -155,9 +155,19 @@ final class AuthenticatedNetwork: NetworkModule {
         
         return network.perform(request: request)
             .tryMap { data, response -> [MessageResponse] in
-                try GenericMapper.map(data: data, response: response)
+                let result: [MessageResponse] = try GenericMapper.map(data: data, response: response)
+                return result
             }
-            .map { $0.map { Message(messageId: $0.id, type: .text(.init(content: $0.text)), isFromCurrentUser: $0.sender == sender)} }
+            .map { $0.map {
+                switch $0.mediaType {
+                case "text":
+                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender)
+                case "attachment":
+                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!)), isFromCurrentUser: $0.sender == sender)
+                default:
+                    return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender)
+                }
+            }}
             .eraseToAnyPublisher()
     }
     
@@ -169,7 +179,7 @@ final class AuthenticatedNetwork: NetworkModule {
     
     func uploadFile(data: UploadFileData) -> AnyPublisher<UploadDataResponse, Error> {
 //        freemusic.mp3
-        guard let url = URL(string: "\(localhost)upload/raw/\(data.fileName)") else {
+        guard let url = URL(string: "\(localhost)/upload/raw/\(data.fileName)") else {
             return Fail<UploadDataResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
@@ -205,7 +215,7 @@ final class AuthenticatedNetwork: NetworkModule {
         images: [MultipartImage],
         fields: [FormField] = []
     ) -> AnyPublisher<Void, Error> {
-        guard let url = URL(string: "\(localhost)upload") else {
+        guard let url = URL(string: "\(localhost)/upload") else {
             return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
@@ -256,17 +266,16 @@ final class AuthenticatedNetwork: NetworkModule {
         .eraseToAnyPublisher()
     }
     
-    func downloadData(url: String) -> AnyPublisher<URL, Error> {
-        guard let url = URL(string: "\(localhost)\(url)") else {
-            return Fail<URL, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+    func downloadData(url: String) -> AnyPublisher<AppDownloadResponse, Error> {
+        guard let url = URL(string: "\(localhost)/download\(url)") else {
+            return Fail<AppDownloadResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         let request = URLRequest(url: url)
+        let originalFileName = url.lastPathComponent
         
-        let progress = progressSubscriber.subscribeProgress(url: url).setFailureType(to: Error.self)
-        
-        let downloadTask = downloadNetwork.download(request: request)
-            .tryCompactMap { response in
+        return downloadNetwork.download(request: request)
+            .tryMap { response in
                 switch response {
                 case .downloaded(let url, let response):
                     guard response.statusCode == 200 else {
@@ -276,25 +285,13 @@ final class AuthenticatedNetwork: NetworkModule {
                     guard let url = url else {
                         throw NSError(domain: "ivalid url", code: 0, userInfo: nil)
                     }
-                    return url
+                    return AppDownloadResponse.downloaded(url, originalFileName)
                 case .downloading(let percentage):
-                    print(percentage)
-                    return nil
-                }                
+                    return AppDownloadResponse.downloading(percentage)
+                }
             }
             .print("--------------- download ")
             .eraseToAnyPublisher()
-        
-        return Publishers.CombineLatest(
-            progress,
-            downloadTask.prepend((url))
-        )
-        .print("--------------- ")
-        .map { progress, complete in
-            print("slh download: \(progress)")
-            return complete
-        }
-        .eraseToAnyPublisher()
     }
     
     //MARK: -Upload Stream
@@ -309,7 +306,7 @@ final class AuthenticatedNetwork: NetworkModule {
         let contentLength = messageData.count * 3
         
         // Create streamed request
-        var request = URLRequest(url: URL(string: "\(localhost)upload/raw/backup.data")!)
+        var request = URLRequest(url: URL(string: "\(localhost)/upload/raw/backup.data")!)
         request.httpMethod = "POST"
         request.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         request.setValue("\(contentLength)", forHTTPHeaderField: "Content-Length")

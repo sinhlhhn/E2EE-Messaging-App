@@ -92,7 +92,7 @@ final class HTTPTokenProvider: TokenProvider {
         guard let refreshToken = refreshToken else {
             return Fail<TokenModel, Error>(error: NSError(domain: "Should log out", code: -1)).eraseToAnyPublisher()
         }
-        let urlString = "\(localhost)auth/token"
+        let urlString = "\(localhost)/auth/token"
         
         let request = buildRequest(url: urlString, method: .post, body: ["token": refreshToken])
         

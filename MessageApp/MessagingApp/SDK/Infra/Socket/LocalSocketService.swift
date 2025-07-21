@@ -20,7 +20,7 @@ struct SocketMessage: SocketData {
     func socketRepresentation() -> SocketData {
         switch messageType {
         case .text(let textMessageData):
-            return ["sender": sender, "receiver": receiver, "text": textMessageData.content]
+            return ["sender": sender, "receiver": receiver, "text": textMessageData.content, "mediaType": "text"]
         case .image(let imageMessage):
             //TODO: -handle send image via socket
             return ["":""]
@@ -28,7 +28,7 @@ struct SocketMessage: SocketData {
             //TODO: -handle send video via socket
             return ["":""]
         case .attachment(let attachmentMessage):
-            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path]
+            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path, "mediaType": "attachment"]
         }
         
     }
