@@ -63,6 +63,7 @@ struct ImageMessage: Hashable {
 
 struct AttachmentMessage: Hashable, SingleMediaMessage {
     let path: URL
+    let originalName: String
     
     func getData() -> Data {
         return try! Data(contentsOf: path)

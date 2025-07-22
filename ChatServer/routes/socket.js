@@ -18,7 +18,7 @@ function initializeSocket(server) {
             socket.emit('register');
         });
 
-        socket.on('send-message', ({ sender, receiver, text, mediaUrl, mediaType }) => {
+        socket.on('send-message', ({ sender, receiver, text, mediaUrl, mediaType, originalName }) => {
             console.log('💌 send-message start');
             if (!sender || !receiver || (!text && !mediaUrl)) {
                 console.error("send-message error:", { sender, receiver, text, mediaUrl });
@@ -34,10 +34,10 @@ function initializeSocket(server) {
 
             // Store message in DB
             const insert = db.prepare(`
-                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName)
+                VALUES (?, ?, ?, ?, ?, ?)
             `);
-            const result = insert.run(senderRow.id, receiverRow.id, text || null, mediaUrl || null, mediaType || null);
+            const result = insert.run(senderRow.id, receiverRow.id, text || null, mediaUrl || null, mediaType || null, originalName || null);
             const messageId = result.lastInsertRowid;
 
             // Emit to receiver if online
@@ -49,8 +49,9 @@ function initializeSocket(server) {
                     mediaUrl,
                     mediaType,
                     messageId,
+                    originalName
                 };
-                
+
                 receiverSocket.emit('receive-message', payload);
                 console.log("💌 Emitting to receiverSocket with data:", payload);
             } else {

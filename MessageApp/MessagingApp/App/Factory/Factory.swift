@@ -143,7 +143,7 @@ extension Factory {
     
     private func createAttachmentMessageViewModel(attachmentMessage: AttachmentMessage) -> MessageAttachmentViewModel {
         if messageAttachmentViewModel == nil {
-            messageAttachmentViewModel = MessageAttachmentViewModel(url: attachmentMessage.path, downloadNetwork: authenticatedNetwork)
+            messageAttachmentViewModel = MessageAttachmentViewModel(attachmentMessage: attachmentMessage, downloadNetwork: authenticatedNetwork)
         }
         return messageAttachmentViewModel!
     }

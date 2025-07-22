@@ -28,7 +28,7 @@ struct SocketMessage: SocketData {
             //TODO: -handle send video via socket
             return ["":""]
         case .attachment(let attachmentMessage):
-            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path, "mediaType": "attachment"]
+            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path, "mediaType": "attachment", "originalName": attachmentMessage.originalName]
         }
         
     }
@@ -103,10 +103,11 @@ class LocalSocketService: SocketUseCase {
                     return
                 }
                 if let mediaURL = dict["mediaUrl"] as? String,
-                   let url = URL(string: mediaURL) {
+                   let url = URL(string: mediaURL),
+                   let originalName = dict["originalName"] as? String {
                     debugPrint("📥 Media received: \(mediaURL)")
                     let decryptedMediaURL = decryptMessage(message: mediaURL)
-                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: url))))
+                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: url, originalName: originalName))))
                     return
                 }
                 
@@ -166,11 +167,12 @@ class LocalSocketService: SocketUseCase {
         case .video(_):
             fatalError()
         case .attachment(let data):
-            let encryptMessage = encryptMessage(message: data.path.path)
-            guard let url = URL(string: encryptMessage) else {
-                fatalError("cannot convert string to url \(encryptMessage)")
+            let encryptPathMessage = encryptMessage(message: data.path.path)
+            guard let url = URL(string: encryptPathMessage) else {
+                fatalError("cannot convert string to url \(encryptPathMessage)")
             }
-            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .attachment(.init(path: url)))
+            let encryptOriginalName = encryptMessage(message: data.originalName)
+            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .attachment(.init(path: url, originalName: encryptOriginalName)))
             socket.emit("send-message", encryptedMessage)
         }
         

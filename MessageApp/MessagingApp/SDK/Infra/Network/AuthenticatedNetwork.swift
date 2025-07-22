@@ -163,7 +163,7 @@ final class AuthenticatedNetwork: NetworkModule {
                 case "text":
                     return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender)
                 case "attachment":
-                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!)), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
                 default:
                     return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender)
                 }

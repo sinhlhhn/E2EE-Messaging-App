@@ -74,7 +74,7 @@ router.get('/messages/:userA/:userB', (req, res) => {
   if (!a || !b) return res.status(404).json({ error: 'User not found' });
 
   const stmt = db.prepare(`
-    SELECT messages.id, users.username AS sender, messages.receiverId, messages.groupId, messages.text, messages.mediaUrl, messages.mediaType, messages.createdAt
+    SELECT messages.id, users.username AS sender, messages.receiverId, messages.groupId, messages.text, messages.mediaUrl, messages.mediaType, messages.originalName, messages.createdAt
     FROM messages
     JOIN users ON users.id = messages.senderId
     WHERE
