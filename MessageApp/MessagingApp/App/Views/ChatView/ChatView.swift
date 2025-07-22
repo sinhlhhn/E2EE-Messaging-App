@@ -43,10 +43,7 @@ struct ChatView: View {
                 }
             MediaMessageTextField(
                 imageSelection: $viewModel.imageSelection) { attachmentURLs in
-                    //TODO: -Deal with foreach here
-                    for attachmentURL in attachmentURLs {
-                        viewModel.sendMessage(.attachment(.init(path: attachmentURL)))
-                    }
+                    viewModel.sendAttachment(urls: attachmentURLs)
                     debugPrint(attachmentURLs)
                 } didTapSend: { text in
                     viewModel.sendMessage(.text(.init(content: text)))

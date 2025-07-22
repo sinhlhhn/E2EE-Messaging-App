@@ -15,10 +15,12 @@ struct MessageResponse: Codable {
     let mediaUrl: String?
     let mediaType: String
     let createdAt: String
+    let originalName: String?
 }
 
 struct UploadDataResponse: Decodable {
     let path: String
+    let originalName: String
 }
 
 struct RequestCommonResponse: Decodable {

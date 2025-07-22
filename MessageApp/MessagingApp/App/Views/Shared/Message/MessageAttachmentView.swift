@@ -20,14 +20,14 @@ struct MessageAttachmentView: View {
             switch viewModel.viewState {
             case .loading:
                 LoadingView()
-            case .completed(let fileTitle, let fileSize):
+            case .completed(let fileSize):
                 HStack(alignment: .top) {
                     Image(systemName: "newspaper")
                         .padding()
                         .background(Color.red)
                         .clipShape(Circle())
                     VStack {
-                        Text(fileTitle)
+                        Text(viewModel.originalName)
                             .font(.title)
                         Text(fileSize)
                             .font(.title3)
@@ -49,24 +49,31 @@ import Combine
 class MessageAttachmentViewModel {
     enum ViewState {
         case loading
-        case completed(String, String)
+        case completed(String)
     }
     
     private(set) var viewState: ViewState = .loading
     
-    private let url: URL
+    private let attachmentMessage: AttachmentMessage
+    private var url: URL {
+        attachmentMessage.path
+    }
+    
+    var originalName: String {
+        attachmentMessage.originalName
+    }
     private let downloadNetwork: NetworkModule
     
     private var cancellables: Set<AnyCancellable> = []
     
-    init(url: URL, downloadNetwork: NetworkModule) {
-        self.url = url
+    init(attachmentMessage: AttachmentMessage, downloadNetwork: NetworkModule) {
+        self.attachmentMessage = attachmentMessage
         self.downloadNetwork = downloadNetwork
     }
     
     func getData() {
-        let filemanager = FileManager.default
-        guard let document = filemanager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        let fileManager = FileManager.default
+        guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             debugPrint("❌ cannot get document directory ")
             return
         }
@@ -76,8 +83,7 @@ class MessageAttachmentViewModel {
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             debugPrint("load data from local")
-            let fileName = destinationURL.lastPathComponent
-            viewState = .completed(fileName, String(getFileSize(from: destinationURL.path)))
+            viewState = .completed(String(getFileSize(from: destinationURL.path)))
             return
         }
         debugPrint("load data from remote")
@@ -86,24 +92,24 @@ class MessageAttachmentViewModel {
     }
     
     func saveFile(from tempUrl: URL, to url: URL) throws -> URL {
-        let filemanager = FileManager.default
-        guard let document = filemanager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+        let fileManager = FileManager.default
+        guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             debugPrint("❌ cannot get document directory ")
             throw NSError(domain: "", code: 0)
         }
         let downloadDirectory = document.appending(path: "Download")
         let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
         
-        if !filemanager.fileExists(atPath: downloadDirectory.path) {
+        if !fileManager.fileExists(atPath: downloadDirectory.path) {
             do {
-                try filemanager.createDirectory(at: downloadDirectory, withIntermediateDirectories: true)
+                try fileManager.createDirectory(at: downloadDirectory, withIntermediateDirectories: true)
             } catch {
                 debugPrint("❌ createDirectory error \(error.localizedDescription)")
                 throw error
             }
         }
         do {
-            try filemanager.moveItem(at: tempUrl, to: destinationURL)
+            try fileManager.moveItem(at: tempUrl, to: destinationURL)
             return destinationURL
         } catch {
             debugPrint("❌ moveItem error \(error.localizedDescription)")
@@ -129,8 +135,7 @@ class MessageAttachmentViewModel {
                     let directoryURL = URL.documentsDirectory.appending(path: originalFileName)
                     do {
                         let destinationURL = try saveFile(from: url, to: directoryURL)
-                        let fileName = destinationURL.lastPathComponent
-                        viewState = .completed(fileName, String(getFileSize(from: destinationURL.path)))
+                        viewState = .completed(String(getFileSize(from: destinationURL.path)))
                     } catch {
                         debugPrint("❌ save file error \(error.localizedDescription)")
                     }

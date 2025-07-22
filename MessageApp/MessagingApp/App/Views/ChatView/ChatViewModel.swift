@@ -87,10 +87,19 @@ class ChatViewModel {
             }
     }
     
+    func sendAttachment(urls: [URL]) {
+        //TODO: -Deal with foreach here
+        for attachmentURL in urls {
+            let originalName = attachmentURL.lastPathComponent
+            sendMessage(.attachment(.init(path: attachmentURL, originalName: originalName)))
+        }
+    }
+    
     func sendMessage(_ type: MessageType) {
         switch type {
         case .text(let textData):
             service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type))
+            messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
         case .image(let VideoMessage):
             //TODO: handle image
             break
@@ -101,8 +110,10 @@ class ChatViewModel {
                     case .finished: print("uploadFile finished")
                     case .failure(let error): print("uploadFile failure")
                     }
-                } receiveValue: { _ in
+                } receiveValue: { [weak self] _ in
+                    guard let self else { return }
                     print("uploadFile receiveValue")
+                    messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
                 }
                 .store(in: &cancellables)
             
@@ -116,13 +127,13 @@ class ChatViewModel {
                 } receiveValue: { [weak self] response in
                     guard let self else { return }
                     print("uploadFile receiveValue")
+                    let attachmentType: MessageType = .attachment(.init(path: URL(string: response.path)!, originalName: response.originalName))
                     //TODO: -Currently, the owner also need to download the file from the server and then save to the Document/Download folder. We may need to move the file to the Document/Download folder to prevent unnecessary network call. It quite complex because currently, we let the server to generate the file name to avoid duplicated file.
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: .attachment(.init(path: URL(string: response.path)!))))
+                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: attachmentType))
+                    messages.append(Message(messageId: 0, type: attachmentType, isFromCurrentUser: true))
                 }
                 .store(in: &cancellables)
         }
-        messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
-        
     }
     
     func loadFirstMessage() {

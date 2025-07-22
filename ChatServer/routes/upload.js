@@ -42,7 +42,8 @@ router.post('/upload', upload.single('media'), (req, res) => {
   res.status(200).json({
     message: 'Upload successful',
     filename: uniqueFilename,
-    path: `/${path.relative(path.join(__dirname, '../storage/uploads'), newPath)}`
+    path: `/${path.relative(path.join(__dirname, '../storage/uploads'), newPath)}`,
+    originalName: baseName
   });
 });
 
@@ -79,7 +80,8 @@ router.post("/upload/raw/:filename", authenticateToken, (req, res) => {
     console.log("✅ File upload complete");
     res.status(200).json({
       message: "✅ Raw stream upload complete",
-      path: `/${mediaType}/${userId}/${filename}`
+      path: `/${mediaType}/${userId}/${filename}`,
+      originalName: originalName
     });
   });
 

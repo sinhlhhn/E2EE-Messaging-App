@@ -39,6 +39,7 @@ db.prepare(`
     text TEXT,
     mediaUrl TEXT,
     mediaType TEXT,
+    originalName TEXT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (senderId) REFERENCES users(id),
     FOREIGN KEY (receiverId) REFERENCES users(id)
