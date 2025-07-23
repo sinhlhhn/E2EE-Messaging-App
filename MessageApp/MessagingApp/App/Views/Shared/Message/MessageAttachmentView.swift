@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MessageAttachmentView: View {
     
-    let viewModel: MessageAttachmentViewModel
+    @State private var viewModel: MessageAttachmentViewModel
     
     init(viewModel: MessageAttachmentViewModel) {
         self.viewModel = viewModel
