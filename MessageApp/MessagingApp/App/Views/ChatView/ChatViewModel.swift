@@ -33,7 +33,13 @@ class ChatViewModel {
     
     private let didTapBack: () -> Void
     
-    var imageSelection: PhotosPickerItem?
+    var imageSelection: PhotosPickerItem? {
+        didSet {
+            if let imageSelection {
+                sendImage(imageSelection)
+            }
+        }
+    }
     
     init(
         sender: User,
@@ -85,6 +91,12 @@ class ChatViewModel {
                 //TODO: -show connected state
                 debugPrint("socket connected")
             }
+    }
+    
+    private func sendImage(_ imageSelection: PhotosPickerItem) {
+        imageSelection.loadTransferable(type: Data.self) { result in
+            
+        }
     }
     
     func sendAttachment(urls: [URL]) {
