@@ -8,7 +8,16 @@
 
 import SwiftUI
 
+enum ImageState {
+    case empty
+    case loading(Progress)
+    case success(Image)
+    case failure(Error)
+}
+
 struct MessageImageView: View {
+    typealias Representation = ImageState
+    
     private let image: String
     
     init(
