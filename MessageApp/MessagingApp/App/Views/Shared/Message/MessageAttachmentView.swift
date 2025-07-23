@@ -26,9 +26,10 @@ struct MessageAttachmentView: View {
                         .padding()
                         .background(Color.red)
                         .clipShape(Circle())
-                    VStack {
+                    VStack(alignment: .leading) {
                         Text(viewModel.originalName)
                             .font(.title)
+                            .lineLimit(1)
                         Text(fileSize)
                             .font(.title3)
                             .foregroundColor(.secondary)
@@ -38,7 +39,7 @@ struct MessageAttachmentView: View {
                 .background(Color.gray.opacity(0.5))
                 .clipShape(.rect(cornerRadius: 20))
             }
-        }.onAppear {
+        }.task {
             viewModel.getData()
         }
     }
@@ -83,7 +84,7 @@ class MessageAttachmentViewModel {
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             debugPrint("load data from local")
-            viewState = .completed(String(getFileSize(from: destinationURL.path)))
+            viewState = .completed(getFileSize(from: destinationURL.path))
             return
         }
         debugPrint("load data from remote")
@@ -135,7 +136,7 @@ class MessageAttachmentViewModel {
                     let directoryURL = URL.documentsDirectory.appending(path: originalFileName)
                     do {
                         let destinationURL = try saveFile(from: url, to: directoryURL)
-                        viewState = .completed(String(getFileSize(from: destinationURL.path)))
+                        viewState = .completed(getFileSize(from: destinationURL.path))
                     } catch {
                         debugPrint("❌ save file error \(error.localizedDescription)")
                     }
@@ -145,14 +146,20 @@ class MessageAttachmentViewModel {
     }
 }
 
-func getFileSize(from path: String) -> Int {
-    var contentLength = 0
-    let attributes = try! FileManager.default.attributesOfItem(atPath: path)
-    if let fileSize = attributes[.size] as? NSNumber {
-        contentLength = fileSize.intValue
-        print("Content-Length: \(contentLength)")
+func getFileSize(from path: String) -> String {
+    do {
+        let attributes = try FileManager.default.attributesOfItem(atPath: path)
+        if let fileSize = attributes[.size] as? NSNumber {
+            let byteCount = fileSize.int64Value
+            let formatter = ByteCountFormatter()
+            formatter.allowedUnits = [.useBytes, .useKB, .useMB, .useGB]
+            formatter.countStyle = .file
+            return formatter.string(fromByteCount: byteCount)
+        }
+    } catch {
+        debugPrint("❌ Failed to get file attributes: \(error.localizedDescription)")
     }
-    return contentLength
+    return "Unknown size"
 }
 
 //#Preview {

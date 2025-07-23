@@ -76,6 +76,7 @@ struct MessageListView: View {
             Text("")
             case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data))
+                .frame(maxWidth: 200)
         }
     }
     
