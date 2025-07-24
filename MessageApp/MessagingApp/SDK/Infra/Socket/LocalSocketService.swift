@@ -103,11 +103,11 @@ class LocalSocketService: SocketUseCase {
                     return
                 }
                 if let mediaURL = dict["mediaUrl"] as? String,
-                   let url = URL(string: mediaURL),
                    let originalName = dict["originalName"] as? String {
                     debugPrint("📥 Media received: \(mediaURL)")
-                    let decryptedMediaURL = decryptMessage(message: mediaURL)
-                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: url, originalName: originalName))))
+                    let decryptedMediaURL = URL(string: decryptMessage(message: mediaURL))!
+                    let decryptedOriginalName = decryptMessage(message: originalName)
+                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: decryptedMediaURL, originalName: decryptedOriginalName))))
                     return
                 }
                 
