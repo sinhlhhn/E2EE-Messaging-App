@@ -18,6 +18,13 @@ struct MessageResponse: Codable {
     let originalName: String?
 }
 
+enum MediaType: String {
+    case image
+    case attachment
+    case video
+    case text
+}
+
 struct UploadDataResponse: Decodable {
     let path: String
     let originalName: String

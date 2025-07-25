@@ -67,7 +67,17 @@ class RemoteMessageService: MessageUseCase {
                 return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser)
             case .image(let data):
                 //TODO: -handle image
-                return Message(messageId: message.messageId, type: .text(.init(content: "text")), isFromCurrentUser: message.isFromCurrentUser)
+                do {
+                    let content = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
+                    let text = String(data: content, encoding: .utf8) ?? ""
+                    let path = URL(string: text)!
+                    let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.originalName) ?? Data())
+                    let originalName = String(data: originalNameData, encoding: .utf8) ?? ""
+                    return Message(messageId: message.messageId, type: .image(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser)
+                } catch {
+                    debugPrint("❌ cannot decrypt message attachment")
+                    return Message(messageId: message.messageId, type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser)
+                }
             case .video(let data):
                 let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
                 let text = String(data: content ?? Data(), encoding: .utf8) ?? ""

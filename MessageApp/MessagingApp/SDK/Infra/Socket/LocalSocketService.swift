@@ -22,8 +22,13 @@ struct SocketMessage: SocketData {
         case .text(let textMessageData):
             return ["sender": sender, "receiver": receiver, "text": textMessageData.content, "mediaType": "text"]
         case .image(let imageMessage):
-            //TODO: -handle send image via socket
-            return ["":""]
+            return [
+                "sender": sender,
+                "receiver": receiver,
+                "mediaUrl": imageMessage.path.path,
+                "mediaType": "image",
+                "originalName": imageMessage.originalName
+            ]
         case .video(let videoMessage):
             //TODO: -handle send video via socket
             return ["":""]
@@ -95,20 +100,45 @@ class LocalSocketService: SocketUseCase {
                let id = dict["messageId"] as? Int
             {
                 guard let self else { return }
-                if let message = dict["text"] as? String {
-                    debugPrint("📥 Message received: \(message)")
-                    // You can post a notification or update the UI here
-                    let decryptedMessage = decryptMessage(message: message)
-                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .text(.init(content: decryptedMessage))))
+                
+                guard let rawType = dict["mediaType"] as? String,
+                      let mediaType = MediaType(rawValue: rawType) else {
+                    debugPrint("cannot parse media type \(data)")
                     return
                 }
-                if let mediaURL = dict["mediaUrl"] as? String,
-                   let originalName = dict["originalName"] as? String {
-                    debugPrint("📥 Media received: \(mediaURL)")
-                    let decryptedMediaURL = URL(string: decryptMessage(message: mediaURL))!
-                    let decryptedOriginalName = decryptMessage(message: originalName)
-                    subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: decryptedMediaURL, originalName: decryptedOriginalName))))
-                    return
+                
+                switch mediaType {
+                case .image:
+                    if let mediaURL = dict["mediaUrl"] as? String,
+                       let originalName = dict["originalName"] as? String {
+                        debugPrint("📥 image received: \(mediaURL)")
+                        let decryptedMediaURL = URL(string: decryptMessage(message: mediaURL))!
+                        let decryptedOriginalName = decryptMessage(message: originalName)
+                        subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .image(.init(path: decryptedMediaURL, originalName: decryptedOriginalName))))
+                        return
+                    }
+                    print("❌ cannot parse media url \(data)")
+                case .attachment:
+                    if let mediaURL = dict["mediaUrl"] as? String,
+                       let originalName = dict["originalName"] as? String {
+                        debugPrint("📥 Media received: \(mediaURL)")
+                        let decryptedMediaURL = URL(string: decryptMessage(message: mediaURL))!
+                        let decryptedOriginalName = decryptMessage(message: originalName)
+                        subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .attachment(.init(path: decryptedMediaURL, originalName: decryptedOriginalName))))
+                        return
+                    }
+                    print("❌ cannot parse media url \(data)")
+                case .video:
+                    fatalError()
+                case .text:
+                    if let message = dict["text"] as? String {
+                        debugPrint("📥 Message received: \(message)")
+                        // You can post a notification or update the UI here
+                        let decryptedMessage = decryptMessage(message: message)
+                        subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .text(.init(content: decryptedMessage))))
+                        return
+                    }
+                    print("❌ cannot parse text \(data)")
                 }
                 
                 print("❌ unknown message format \(data)")
@@ -162,8 +192,15 @@ class LocalSocketService: SocketUseCase {
             let encryptMessage = encryptMessage(message: data.content)
             let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .text(.init(content: encryptMessage)))
             socket.emit("send-message", encryptedMessage)
-        case .image(_):
-            fatalError()
+        case .image(let data):
+            let encryptPathMessage = encryptMessage(message: data.path.path)
+            guard let url = URL(string: encryptPathMessage) else {
+                fatalError("cannot convert string to url \(encryptPathMessage)")
+            }
+            let encryptOriginalName = encryptMessage(message: data.originalName)
+            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .image(.init(path: url, originalName: encryptOriginalName)))
+            socket.emit("send-message", encryptedMessage)
+            
         case .video(_):
             fatalError()
         case .attachment(let data):

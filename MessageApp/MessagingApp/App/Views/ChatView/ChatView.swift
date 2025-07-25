@@ -18,13 +18,16 @@ struct ChatView: View {
     @FocusState private var isFocused: Bool
     
     private let didCreateMessageAttachmentViewModel: (AttachmentMessage) -> MessageAttachmentViewModel
+    private let didCreateMessageImageViewModel: (ImageMessage) -> MessageImageViewModel
     
     init(
         viewModel: ChatViewModel,
-        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel
+        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel,
+        didCreateMessageImageViewModel: @escaping (ImageMessage) -> MessageImageViewModel
     ) {
         self.viewModel = viewModel
         self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
+        self.didCreateMessageImageViewModel = didCreateMessageImageViewModel
     }
     
     var body: some View {
@@ -36,7 +39,8 @@ struct ChatView: View {
                 previousId: $viewModel.lastMessageId,
                 messages: $viewModel.messages,
                 isFocused: $isFocused,
-                didCreateMessageAttachmentViewModel: didCreateMessageAttachmentViewModel
+                didCreateMessageAttachmentViewModel: didCreateMessageAttachmentViewModel,
+                didCreateMessageImageViewModel: didCreateMessageImageViewModel
             )
                 .onTapGesture {
                     isFocused = false

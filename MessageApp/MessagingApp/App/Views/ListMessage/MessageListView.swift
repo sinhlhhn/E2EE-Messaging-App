@@ -15,6 +15,7 @@ struct MessageListView: View {
     @State private var isScrollUp: Bool = false
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
+    var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -70,11 +71,8 @@ struct MessageListView: View {
             MessageVideoView(viewModel: .init(source: data.path.path))
         case .image(let data):
             //TODO: -Handle display multiple image here. Create a new collection image view
-//            for url in data.path {
-//                MessageImageView(image: data.path)
-//            }
-            Text("")
-            case .attachment(let data):
+            MessageImageView(viewModel: didCreateMessageImageViewModel(data))
+        case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data))
                 .frame(maxWidth: 200)
         }

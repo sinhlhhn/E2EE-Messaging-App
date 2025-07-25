@@ -138,11 +138,19 @@ extension Factory {
         chatViewModel.sender = sender
         chatViewModel.receiver = receiver
         
-        return ChatView(viewModel: chatViewModel, didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel)
+        return ChatView(
+            viewModel: chatViewModel,
+            didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
+            didCreateMessageImageViewModel: createMessageImageViewModel
+        )
     }
     
     private func createAttachmentMessageViewModel(attachmentMessage: AttachmentMessage) -> MessageAttachmentViewModel {
         MessageAttachmentViewModel(attachmentMessage: attachmentMessage, downloadNetwork: authenticatedNetwork)
+    }
+    
+    private func createMessageImageViewModel(message: ImageMessage) -> MessageImageViewModel {
+        MessageImageViewModel(message: message, downloadNetwork: authenticatedNetwork)
     }
 }
 
