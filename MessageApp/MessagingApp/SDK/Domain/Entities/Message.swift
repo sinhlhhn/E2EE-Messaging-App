@@ -45,19 +45,11 @@ struct VideoMessage: Hashable, SingleMediaMessage {
 }
 
 struct ImageMessage: Hashable {
-    let path: [URL]
+    let path: URL
+    let originalName: String
     
-    func getData() -> [Data] {
-        var result: [Data] = []
-        for url in path {
-            do {
-               let data = try Data(contentsOf: url)
-                result.append(data)
-            } catch {
-                print("Error: \(error)")
-            }
-        }
-        return result
+    func getData() -> Data {
+        return try! Data(contentsOf: path)
     }
 }
 

@@ -24,26 +24,23 @@ router.use(authenticateToken);
 //   });
 // });
 
-router.post('/upload', upload.single('media'), (req, res) => {
+router.post('/upload', authenticateToken, upload.single('media'), (req, res) => {
   if (!req.file) {
     console.log("No file uploaded");
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const ext = path.extname(req.file.originalname).toLowerCase();
-  const baseName = path.basename(req.file.originalname, ext);
-  const uniqueFilename = `${baseName}-${uuidv4()}${ext}`;
+  const mediaType = req.body.mediaType;
+  const userId = req.user?.sub;
+  const fileName = req.file.filename;
 
-  const oldPath = req.file.path;
-  const newPath = path.join(path.dirname(oldPath), uniqueFilename);
-  fs.renameSync(oldPath, newPath);
-
+console.log(`✅ Upload successful: /${mediaType}/${userId}/${fileName}`);
 
   res.status(200).json({
     message: 'Upload successful',
-    filename: uniqueFilename,
-    path: `/${path.relative(path.join(__dirname, '../storage/uploads'), newPath)}`,
-    originalName: baseName
+    filename: fileName,
+    path: `/${mediaType}/${userId}/${fileName}`,
+    originalName: fileName
   });
 });
 

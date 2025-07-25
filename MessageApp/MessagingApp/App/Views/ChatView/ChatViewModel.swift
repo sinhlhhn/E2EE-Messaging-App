@@ -36,7 +36,7 @@ class ChatViewModel {
     var imageSelection: PhotosPickerItem? {
         didSet {
             if let imageSelection {
-                sendImage(imageSelection)
+                loadTransferable(from: imageSelection)
             }
         }
     }
@@ -93,10 +93,48 @@ class ChatViewModel {
             }
     }
     
-    private func sendImage(_ imageSelection: PhotosPickerItem) {
-        imageSelection.loadTransferable(type: Data.self) { result in
-            
+    private func loadTransferable(from imageSelection: PhotosPickerItem) -> Progress {
+            return imageSelection.loadTransferable(type: Data.self) { [weak self] result in
+                guard let self else { return }
+                DispatchQueue.main.async {
+                    guard imageSelection == self.imageSelection else {
+                        print("Failed to get the selected item.")
+                        return
+                    }
+                    switch result {
+                    case .success(let image?):
+                        self.uploadImage(imageData: image)
+                    case .success(nil):
+                        //TODO: -handle nil image
+                        break
+                    case .failure(let error):
+                        //TODO: -handle error
+                        break
+                    }
+                    self.imageSelection = nil
+                }
+            }
         }
+    
+    private func uploadImage(imageData: Data) {
+        let fileName = "image.jpg"
+        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
+            .sink { completion in
+                switch completion {
+                case .finished: debugPrint("uploadImage finish")
+                case .failure(let error): debugPrint("uploadImage failure with error \(error.localizedDescription)")
+                }
+            } receiveValue: { [weak self] result in
+                debugPrint("uploadImage result \(result)")
+                self?.notifyNewMessageSent(result: result)
+            }
+            .store(in: &cancellables)
+    }
+    
+    private func notifyNewMessageSent(result: UploadDataResponse) {
+        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName))
+        service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type))
+        messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
     }
     
     func sendAttachment(urls: [URL]) {

@@ -1,5 +1,5 @@
 
-
+const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -10,22 +10,34 @@ if (!fs.existsSync(uploadRoot)) fs.mkdirSync(uploadRoot);
 
 // Configure storage
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        let typeFolder = 'other';
-        console.log(`file: ${file.mimetype}`)
-        if (file.mimetype.startsWith('video/')) typeFolder = 'video';
-        else if (file.mimetype.startsWith('audio/')) typeFolder = 'audio';
-        else if (file.mimetype.startsWith('image/')) typeFolder = 'image';
+    destination: async (req, file, cb) => {
+      try {
+        const mediaType = req.body.mediaType; // still from client
+        const userId = req.user?.sub; // from authentication middleware
 
-        const targetDir = path.join(uploadRoot, typeFolder);
-        if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+        if (!userId) {
+          return cb(new Error('Missing userId'));
+        }
 
-        cb(null, targetDir);
+        if (!mediaType) {
+          return cb(new Error('Missing mediaType'));
+        }
+
+        const uploadPath = path.resolve(__dirname, `../storage/uploads/${mediaType}/${userId}`);
+        if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
+
+        cb(null, uploadPath);
+      } catch (err) {
+        cb(err);
+      }
     },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname)); // Keep original extension
-    }
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const base = path.basename(file.originalname, ext);
+      const uuid = uuidv4();
+      const uniqueFileName = `${base}-${uuid}${ext}`;
+      cb(null, uniqueFileName);
+    },
 });
 
 const upload = multer({ storage: storage });

@@ -159,13 +159,19 @@ final class AuthenticatedNetwork: NetworkModule {
                 return result
             }
             .map { $0.map {
-                switch $0.mediaType {
-                case "text":
-                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender)
-                case "attachment":
-                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
-                default:
+                guard let mediaType = MediaType(rawValue: $0.mediaType) else {
+                    debugPrint("❌ cannot parse mediaType: \(String(describing: $0.mediaType))")
                     return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender)
+                }
+                switch mediaType {
+                case .text:
+                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender)
+                case .attachment:
+                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
+                case .image:
+                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
+                case .video:
+                    fatalError()
                 }
             }}
             .eraseToAnyPublisher()
@@ -214,9 +220,9 @@ final class AuthenticatedNetwork: NetworkModule {
     func uploadImage(
         images: [MultipartImage],
         fields: [FormField] = []
-    ) -> AnyPublisher<Void, Error> {
+    ) -> AnyPublisher<UploadDataResponse, Error> {
         guard let url = URL(string: "\(localhost)/upload") else {
-            return Fail<Void, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+            return Fail<UploadDataResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         var multipart = MultipartRequest()
@@ -237,33 +243,22 @@ final class AuthenticatedNetwork: NetworkModule {
         
         let uploadRequest: (URLRequest, UploadData) = (request, .data(multipart.httpBody))
         
-        let progress = progressSubscriber.subscribeProgress(url: url).setFailureType(to: Error.self)
-        
-        let uploadTask = uploadNetwork.upload(request: uploadRequest)
-            .tryMap { response in
+        return uploadNetwork.upload(request: uploadRequest)
+            .tryCompactMap { response -> UploadDataResponse? in
                 switch response {
                 case .uploading(let percentage):
                     print(percentage)
+                    return nil
                 case .uploaded(let data, let response):
-                    guard response.statusCode == 200 else {
+                    guard response.statusCode == 200, let data = data else {
                         let error = URLError(.badServerResponse)
                         throw error
                     }
+                    let result: UploadDataResponse = try GenericMapper.map(data: data, response: response)
+                    return result
                 }
-                return Void()
             }
             .eraseToAnyPublisher()
-        
-        return Publishers.CombineLatest(
-            progress,
-            uploadTask.prepend(())
-        )
-        .print("--------------- ")
-        .map { progress, complete in
-            print("slh upload: \(progress)")
-            return Void()
-        }
-        .eraseToAnyPublisher()
     }
     
     func downloadData(url: String) -> AnyPublisher<AppDownloadResponse, Error> {
