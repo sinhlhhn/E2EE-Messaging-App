@@ -26,6 +26,9 @@ struct MessageVideoView: View {
                 createVideoPlayer(player: player)
             }
         }
+        .task {
+            viewModel.getData()
+        }
     }
     
     private var loadingView: some View {
@@ -36,13 +39,13 @@ struct MessageVideoView: View {
         return ZStack {
             VideoPlayer(player: player)
                 .clipShape(.rect(cornerRadius: 10))
-                .frame(maxWidth: 200, maxHeight: 400)
+                .frame(width: 200, height: 400)
         }
     }
 }
 
 
 
-#Preview {
-    MessageVideoView(viewModel: .init(source: "freevideo.mp4", fileExtension: nil))
-}
+//#Preview {
+//    MessageVideoView(viewModel: .init(message: "freevideo.mp4", downloadNetwork: nil))
+//}

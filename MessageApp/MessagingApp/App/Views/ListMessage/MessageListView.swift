@@ -16,6 +16,7 @@ struct MessageListView: View {
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
     var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
+    var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
     
     var body: some View {
         ScrollViewReader { proxy in
@@ -68,7 +69,7 @@ struct MessageListView: View {
         case .text(let data):
             MessageView(content: data.content)
         case .video(let data):
-            MessageVideoView(viewModel: .init(source: data.path.path))
+            MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
         case .image(let data):
             //TODO: -Handle display multiple image here. Create a new collection image view
             MessageImageView(viewModel: didCreateMessageImageViewModel(data))

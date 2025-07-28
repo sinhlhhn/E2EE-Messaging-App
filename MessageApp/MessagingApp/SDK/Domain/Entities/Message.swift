@@ -38,6 +38,7 @@ struct TextMessageData: Hashable {
 
 struct VideoMessage: Hashable, SingleMediaMessage {
     let path: URL
+    let originalName: String
     
     func getData() -> Data {
         return try! Data(contentsOf: path)

@@ -20,7 +20,12 @@ struct SocketMessage: SocketData {
     func socketRepresentation() -> SocketData {
         switch messageType {
         case .text(let textMessageData):
-            return ["sender": sender, "receiver": receiver, "text": textMessageData.content, "mediaType": "text"]
+            return [
+                "sender": sender,
+                "receiver": receiver,
+                "text": textMessageData.content,
+                "mediaType": "text"
+            ]
         case .image(let imageMessage):
             return [
                 "sender": sender,
@@ -30,10 +35,21 @@ struct SocketMessage: SocketData {
                 "originalName": imageMessage.originalName
             ]
         case .video(let videoMessage):
-            //TODO: -handle send video via socket
-            return ["":""]
+            return [
+                "sender": sender,
+                "receiver": receiver,
+                "mediaUrl": videoMessage.path.path,
+                "mediaType": "video",
+                "originalName": videoMessage.originalName
+            ]
         case .attachment(let attachmentMessage):
-            return ["sender": sender, "receiver": receiver, "mediaUrl": attachmentMessage.path.path, "mediaType": "attachment", "originalName": attachmentMessage.originalName]
+            return [
+                "sender": sender,
+                "receiver": receiver,
+                "mediaUrl": attachmentMessage.path.path,
+                "mediaType": "attachment",
+                "originalName": attachmentMessage.originalName
+            ]
         }
         
     }
@@ -129,7 +145,15 @@ class LocalSocketService: SocketUseCase {
                     }
                     print("❌ cannot parse media url \(data)")
                 case .video:
-                    fatalError()
+                    if let mediaURL = dict["mediaUrl"] as? String,
+                       let originalName = dict["originalName"] as? String {
+                        debugPrint("📥 Video received: \(mediaURL)")
+                        let decryptedMediaURL = URL(string: decryptMessage(message: mediaURL))!
+                        let decryptedOriginalName = decryptMessage(message: originalName)
+                        subject.send(SocketMessage(messageId: String("\(id)"), sender: user, receiver: "", messageType: .video(.init(path: decryptedMediaURL, originalName: decryptedOriginalName))))
+                        return
+                    }
+                    print("❌ cannot parse media url \(data)")
                 case .text:
                     if let message = dict["text"] as? String {
                         debugPrint("📥 Message received: \(message)")
@@ -201,8 +225,14 @@ class LocalSocketService: SocketUseCase {
             let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .image(.init(path: url, originalName: encryptOriginalName)))
             socket.emit("send-message", encryptedMessage)
             
-        case .video(_):
-            fatalError()
+        case .video(let data):
+            let encryptPathMessage = encryptMessage(message: data.path.path)
+            guard let url = URL(string: encryptPathMessage) else {
+                fatalError("cannot convert string to url \(encryptPathMessage)")
+            }
+            let encryptOriginalName = encryptMessage(message: data.originalName)
+            let encryptedMessage: Message = Message(messageId: message.messageId, sender: message.sender, receiver: message.receiver, messageType: .video(.init(path: url, originalName: encryptOriginalName)))
+            socket.emit("send-message", encryptedMessage)
         case .attachment(let data):
             let encryptPathMessage = encryptMessage(message: data.path.path)
             guard let url = URL(string: encryptPathMessage) else {

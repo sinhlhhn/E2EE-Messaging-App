@@ -171,7 +171,7 @@ final class AuthenticatedNetwork: NetworkModule {
                 case .image:
                     return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
                 case .video:
-                    fatalError()
+                    return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
                 }
             }}
             .eraseToAnyPublisher()

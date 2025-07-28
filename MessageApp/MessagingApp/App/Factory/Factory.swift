@@ -151,8 +151,13 @@ extension Factory {
             messages: messages,
             isFocused: isFocused,
             didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
-            didCreateMessageImageViewModel: createMessageImageViewModel
+            didCreateMessageImageViewModel: createMessageImageViewModel,
+            didCreateMessageVideoViewModel: createMessageVideoViewModel
         )
+    }
+    
+    private func createMessageVideoViewModel(message: VideoMessage) -> MessageVideoViewModel {
+        MessageVideoViewModel(message: message, downloadNetwork: authenticatedNetwork)
     }
     
     private func createAttachmentMessageViewModel(attachmentMessage: AttachmentMessage) -> MessageAttachmentViewModel {

@@ -93,14 +93,35 @@ class ChatViewModel {
             }
     }
     
-    private func loadTransferable(from imageSelection: PhotosPickerItem) -> Progress {
-            return imageSelection.loadTransferable(type: Data.self) { [weak self] result in
+    private func loadTransferable(from imageSelection: PhotosPickerItem) {
+        imageSelection.loadTransferable(type: Movie.self) { [weak self] result in
+            guard let self else { return }
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let movie?):
+                    self.uploadVideo(movie)
+                case .success(nil):
+                    //TODO: -handle nil image
+                    self.loadImage(from: imageSelection)
+                    break
+                case .failure(let error):
+                    //TODO: -handle error
+                    debugPrint("❌ Failed to get the selected Movie.")
+                }
+                self.imageSelection = nil
+            }
+        }
+    }
+    
+    private func uploadVideo(_ video: Movie) {
+        debugPrint("🙈 \(video.url.path)")
+        sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
+    }
+    
+    private func loadImage(from imageSelection: PhotosPickerItem) {
+            imageSelection.loadTransferable(type: Data.self) { [weak self] result in
                 guard let self else { return }
                 DispatchQueue.main.async {
-                    guard imageSelection == self.imageSelection else {
-                        print("Failed to get the selected item.")
-                        return
-                    }
                     switch result {
                     case .success(let image?):
                         self.uploadImage(imageData: image)
@@ -160,9 +181,15 @@ class ChatViewModel {
                     case .finished: print("uploadFile finished")
                     case .failure(let error): print("uploadFile failure")
                     }
-                } receiveValue: { [weak self] _ in
+                } receiveValue: { [weak self] response in
                     guard let self else { return }
                     print("uploadFile receiveValue")
+                    guard let url = URL(string:  response.path) else {
+                        debugPrint("❌ cannot convert string to URL")
+                        return
+                    }
+                    let type = MessageType.video(.init(path: url, originalName: url.lastPathComponent))
+                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type))
                     messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
                 }
                 .store(in: &cancellables)
