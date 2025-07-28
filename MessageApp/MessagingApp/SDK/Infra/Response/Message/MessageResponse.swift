@@ -25,11 +25,4 @@ enum MediaType: String {
     case text
 }
 
-struct UploadDataResponse: Decodable {
-    let path: String
-    let originalName: String
-}
 
-struct RequestCommonResponse: Decodable {
-    let success: Bool
-}
