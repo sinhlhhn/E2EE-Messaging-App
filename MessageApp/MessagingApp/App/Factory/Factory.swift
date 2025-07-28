@@ -140,6 +140,16 @@ extension Factory {
         
         return ChatView(
             viewModel: chatViewModel,
+            didCreateMessageListView: createChatView
+        )
+    }
+    
+    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[Message]>, isFocused: FocusState<Bool>.Binding) -> MessageListView {
+        MessageListView(
+            reachedTop: reachedTop,
+            previousId: lastMessageId,
+            messages: messages,
+            isFocused: isFocused,
             didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
             didCreateMessageImageViewModel: createMessageImageViewModel
         )

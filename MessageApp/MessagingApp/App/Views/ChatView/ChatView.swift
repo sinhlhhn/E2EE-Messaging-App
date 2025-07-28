@@ -17,34 +17,29 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
-    private let didCreateMessageAttachmentViewModel: (AttachmentMessage) -> MessageAttachmentViewModel
-    private let didCreateMessageImageViewModel: (ImageMessage) -> MessageImageViewModel
+    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
     
     init(
         viewModel: ChatViewModel,
-        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel,
-        didCreateMessageImageViewModel: @escaping (ImageMessage) -> MessageImageViewModel
+        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
     ) {
         self.viewModel = viewModel
-        self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
-        self.didCreateMessageImageViewModel = didCreateMessageImageViewModel
+        self.didCreateMessageListView = didCreateMessageListView
     }
     
     var body: some View {
         VStack {
             Text("Sender: \(viewModel.sender)")
             Text("Receiver: \(viewModel.receiver)")
-            MessageListView(
-                reachedTop: $viewModel.reachedTop,
-                previousId: $viewModel.lastMessageId,
-                messages: $viewModel.messages,
-                isFocused: $isFocused,
-                didCreateMessageAttachmentViewModel: didCreateMessageAttachmentViewModel,
-                didCreateMessageImageViewModel: didCreateMessageImageViewModel
+            didCreateMessageListView(
+                $viewModel.reachedTop,
+                $viewModel.lastMessageId,
+                $viewModel.messages,
+                $isFocused
             )
-                .onTapGesture {
-                    isFocused = false
-                }
+            .onTapGesture {
+                isFocused = false
+            }
             MediaMessageTextField(
                 imageSelection: $viewModel.imageSelection) { attachmentURLs in
                     viewModel.sendAttachment(urls: attachmentURLs)
@@ -52,8 +47,8 @@ struct ChatView: View {
                 } didTapSend: { text in
                     viewModel.sendMessage(.text(.init(content: text)))
                 }
-            .focused($isFocused)
-            .padding()
+                .focused($isFocused)
+                .padding()
         }
         .clipped()
         .navigationBarBackButtonHidden()
