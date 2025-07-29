@@ -9,8 +9,9 @@ import SwiftUI
 import AVKit
 
 struct MessageVideoView: View {
-    @State var isPlaying: Bool = false
-    let viewModel: MessageVideoViewModel
+    @State private var isPlaying: Bool = false
+    @State private var viewModel: MessageVideoViewModel
+    @State private var player = AVPlayer(playerItem: nil)
     
     init(viewModel: MessageVideoViewModel) {
         self.viewModel = viewModel
@@ -22,8 +23,10 @@ struct MessageVideoView: View {
             case .loading:
                 loadingView
             case .completed(let url):
-                let player = AVPlayer(url: url)
-                createVideoPlayer(player: player)
+                createVideoPlayer()
+                    .task {
+                        player = AVPlayer(url: url)
+                    }
             }
         }
         .task {
@@ -35,7 +38,7 @@ struct MessageVideoView: View {
         ProgressView()
     }
     
-    private func createVideoPlayer(player: AVPlayer?) -> some View {
+    private func createVideoPlayer() -> some View {
         return ZStack {
             VideoPlayer(player: player)
                 .clipShape(.rect(cornerRadius: 10))
