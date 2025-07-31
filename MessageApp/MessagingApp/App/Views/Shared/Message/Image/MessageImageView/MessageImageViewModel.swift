@@ -1,43 +1,13 @@
 //
-//  MessageView 2.swift
+//  MessageImageViewModel.swift
 //  MessagingApp
 //
-//  Created by SinhLH.AVI on 16/7/25.
+//  Created by SinhLH.AVI on 31/7/25.
 //
 
-
 import SwiftUI
-
-struct MessageImageView: View {
-    @State private var viewModel: MessageImageViewModel
-    
-    init(viewModel: MessageImageViewModel) {
-        self.viewModel = viewModel
-    }
-    
-    var body: some View {
-        contentView
-    }
-    
-    private var contentView: some View {
-        Group {
-            switch viewModel.viewState {
-            case .loading:
-                LoadingView()
-            case .completed(let image):
-                Image(uiImage: image)
-                    .resizable()
-                    .clipShape(.rect(cornerRadius: 10))
-                    .frame(maxWidth: 200, maxHeight: 400)
-            }
-        }.task {
-            viewModel.getData()
-        }
-        
-    }
-}
-
 import Combine
+
 @Observable
 class MessageImageViewModel {
     enum ViewState {
@@ -148,7 +118,3 @@ class MessageImageViewModel {
             .store(in: &cancellables)
     }
 }
-
-//#Preview {
-//    MessageImageView(image: "tiger")
-//}

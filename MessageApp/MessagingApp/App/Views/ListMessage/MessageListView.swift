@@ -13,43 +13,48 @@ struct MessageListView: View {
     @Binding var messages: [Message]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
+    @State private var viewModel: MessageListViewModel = .init()
+    @State private var selectedId: String?
+    @State private var fullScreenImage: UIImage?
+    @Namespace private var nsAnimation
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
     var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
     var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
     
     var body: some View {
-        ScrollViewReader { proxy in
-            if reachedTop {
-                ProgressView()
-            }
-            List(messages) { message in
-                HStack {
-                    if message.isFromCurrentUser {
-                        Spacer()
-                    }
-                    createMessageView(message)
-                    .onAppear {
-                        if message.messageId == messages.first?.messageId, isScrollUp {
-                            reachedTop = true
+        ZStack {
+            ScrollViewReader { proxy in
+                if reachedTop {
+                    ProgressView()
+                }
+                List(messages) { message in
+                    HStack {
+                        if message.isFromCurrentUser {
+                            Spacer()
                         }
+                        createMessageView(message)
+                            .onAppear {
+                                if message.messageId == messages.first?.messageId, isScrollUp {
+                                    reachedTop = true
+                                }
+                            }
                     }
+                    .id(message.messageId)
+                    .listRowSeparator(.hidden)
                 }
-                .id(message.messageId)
-                .listRowSeparator(.hidden)
-            }
-            .listStyle(.plain)
-            .scrollIndicators(.hidden)
-            .onChange(of: messages, { _, _ in
-                //TODO: If the user is scrolling up, do not scroll to the bottom.
-                scrollToBottom(proxy)
-            })
-            .onChange(of: isFocused, { _, _ in
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                .listStyle(.plain)
+                .scrollIndicators(.hidden)
+                .onChange(of: messages, { _, _ in
+                    //TODO: If the user is scrolling up, do not scroll to the bottom.
                     scrollToBottom(proxy)
-                }
-            })
-            .onScrollGeometryChange(for: CGFloat.self, of: { geometry in
+                })
+                .onChange(of: isFocused, { _, _ in
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        scrollToBottom(proxy)
+                    }
+                })
+                .onScrollGeometryChange(for: CGFloat.self, of: { geometry in
                     geometry.contentOffset.y
                 }, action: { oldValue, newValue in
                     if oldValue == newValue { return }
@@ -59,7 +64,18 @@ struct MessageListView: View {
                         isScrollUp = true
                     }
                 })
-            .scrollContentBackground(.hidden)
+                .scrollContentBackground(.hidden)
+            }
+            
+            if let fullScreenImage = fullScreenImage, let selectedId = selectedId {
+                FullScreenMessageImageView(image: fullScreenImage, geoEffectId: selectedId, nsAnimation: nsAnimation)
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            withAnimation {
+                                self.fullScreenImage = nil
+                            }
+                        })
+            }
         }
     }
     
@@ -72,10 +88,52 @@ struct MessageListView: View {
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
         case .image(let data):
             //TODO: -Handle display multiple image here. Create a new collection image view
-            MessageImageView(viewModel: didCreateMessageImageViewModel(data))
+            // This code is used to create a Hero animation for the image.
+            // We have a thumbnail and a full-size image, and we want to create a Hero animation between them.
+            // The process is as follows:
+            //  - The app loads the image from disk.
+            //  - When the user taps the thumbnail image, the image flies from the thumbnail to the full-size version.
+            //  - When the user dismisses the full-size image, it flies back to the thumbnail.
+            //
+            // Issue:
+            //  - The problem is that `matchedGeometryEffect` only allows one view with the same ID and `isSource = true` at a time.
+            //    → To work around this, we create a placeholder and remove the thumbnail when transitioning to the full-size image.
+            //  - Since the thumbnail is removed, we have to reload the image from disk. This introduces a delay,
+            //    and we show a loading state to the user. However, this loading state prevents SwiftUI from recognizing
+            //    the transition properly, resulting in a choppy animation.
+            //    → To fix this, we implement a caching mechanism to avoid loading from disk, allowing SwiftUI to perform
+            //    a smooth transition.
+            if let fullScreenImage = fullScreenImage {
+                Image(uiImage: fullScreenImage)
+                    .resizable()
+                    .frame(width: 200, height: 200)
+            } else if let image = viewModel.image(forKey: message.id.uuidString) {
+                CachedMessageImageView(image: image, geoEffectId: message.id.uuidString, nsAnimation: nsAnimation) { image in
+                    selectImage(message.id, image: image)
+                }
+                .frame(width: 200, height: 200)
+            } else {
+                createMessageImageView(data: data, id: message.id)
+                    .frame(width: 200, height: 200)
+            }
         case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data))
                 .frame(maxWidth: 200)
+        }
+    }
+    
+    @ViewBuilder
+    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
+        MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
+            viewModel.insertImage(image, forKey: id.uuidString)
+            selectImage(id, image: image)
+        }
+    }
+    
+    private func selectImage(_ id: UUID, image: UIImage) {
+        withAnimation {
+            selectedId = id.uuidString
+            fullScreenImage = image
         }
     }
     
