@@ -28,7 +28,7 @@ struct MessageListView: View {
                 if reachedTop {
                     ProgressView()
                 }
-                List(messages) { message in
+                List(messages)  { message in
                     HStack {
                         if message.isFromCurrentUser {
                             Spacer()
@@ -40,7 +40,6 @@ struct MessageListView: View {
                                 }
                             }
                     }
-                    .id(message.messageId)
                     .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
@@ -75,6 +74,7 @@ struct MessageListView: View {
                                 self.fullScreenImage = nil
                             }
                         })
+                    .zIndex(1) // During the transition, SwiftUI may assign a higher zIndex to the list because the full-size image is removed from the view hierarchy. To prevent the list from overlapping the full-size image, we manually set the zIndex to ensure the full-size image stays on top until the transition completes.
             }
         }
     }
@@ -106,6 +106,7 @@ struct MessageListView: View {
             if let fullScreenImage = fullScreenImage {
                 Image(uiImage: fullScreenImage)
                     .resizable()
+                    .clipShape(.rect(cornerRadius: 10))
                     .frame(width: 200, height: 200)
             } else if let image = viewModel.image(forKey: message.id.uuidString) {
                 CachedMessageImageView(image: image, geoEffectId: message.id.uuidString, nsAnimation: nsAnimation) { image in

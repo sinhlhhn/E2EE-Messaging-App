@@ -24,6 +24,9 @@ struct FullScreenMessageImageView: View {
             .matchedGeometryEffect(id: geoEffectId, in: nsAnimation)
             .scaledToFit()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black.opacity(0.7))
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white)
+            )
     }
 }
