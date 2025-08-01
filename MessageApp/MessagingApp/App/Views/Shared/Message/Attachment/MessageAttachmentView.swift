@@ -23,15 +23,15 @@ struct MessageAttachmentView: View {
             case .completed(let fileSize):
                 HStack(alignment: .top) {
                     Image(systemName: "newspaper")
-                        .padding()
+                        .padding(.all, 8)
                         .background(Color.red)
                         .clipShape(Circle())
                     VStack(alignment: .leading) {
                         Text(viewModel.originalName)
-                            .font(.title)
+                            .font(.title3)
                             .lineLimit(1)
                         Text(fileSize)
-                            .font(.title3)
+                            .font(.footnote)
                             .foregroundColor(.secondary)
                     }
                 }

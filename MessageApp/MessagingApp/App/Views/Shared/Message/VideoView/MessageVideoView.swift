@@ -42,7 +42,7 @@ struct MessageVideoView: View {
         return ZStack {
             VideoPlayer(player: player)
                 .clipShape(.rect(cornerRadius: 10))
-                .frame(width: 200, height: 400)
+                .frame(width: 200, height: 300)
         }
     }
 }
