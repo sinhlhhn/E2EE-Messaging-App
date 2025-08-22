@@ -1,6 +1,11 @@
 📱 iOS E2EE Messaging App (SwiftUI + Swift)
 Welcome to the End-to-End Encrypted Messaging SDK for iOS. This project implements a secure, modular, and real-time messaging system with end-to-end encryption and live communication features.
 
+Demo:
+
+https://github.com/user-attachments/assets/b7c4215a-dd9b-4064-8756-46c1929f5813
+
+
 🎯 Project Overview
 The project consists of two main components:
 1. A Node.js-based chat server with WebSocket support
