@@ -36,14 +36,9 @@ class MessageAttachmentViewModel {
     }
     
     func getData() {
-        let fileManager = FileManager.default
-        guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            debugPrint("❌ cannot get document directory ")
+        guard let destinationURL = getDestinationURL() else {
             return
         }
-        
-        let downloadDirectory = document.appending(path: "Download")
-        let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             debugPrint("load data from local")
@@ -53,6 +48,19 @@ class MessageAttachmentViewModel {
         debugPrint("load data from remote")
         fetchImageFromCloud(source: url.path)
         
+    }
+    
+    func getDestinationURL() -> URL? {
+        let fileManager = FileManager.default
+        guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            debugPrint("❌ cannot get document directory ")
+            return nil
+        }
+        
+        let downloadDirectory = document.appending(path: "Download")
+        let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
+        
+        return destinationURL
     }
     
     func saveFile(from tempUrl: URL, to url: URL) throws -> URL {

@@ -14,9 +14,15 @@ struct MessageListView: View {
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     @State private var viewModel: MessageListViewModel = .init()
+    
+    // Image
     @State private var selectedId: String?
     @State private var fullScreenImage: UIImage?
     @Namespace private var nsAnimation
+    
+    // Attachment
+    @State private var isDisplayPreview = false
+    @State private var previewURL: URL?
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
     var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
@@ -76,6 +82,10 @@ struct MessageListView: View {
                         })
                     .zIndex(1) // During the transition, SwiftUI may assign a higher zIndex to the list because the full-size image is removed from the view hierarchy. To prevent the list from overlapping the full-size image, we manually set the zIndex to ensure the full-size image stays on top until the transition completes.
             }
+            
+            if let previewURL = previewURL, isDisplayPreview {
+                PDFKitView(url: previewURL)
+            }
         }
     }
     
@@ -118,8 +128,11 @@ struct MessageListView: View {
                     .frame(width: 200, height: 200)
             }
         case .attachment(let data):
-            MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data))
-                .frame(maxWidth: 200)
+            MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
+                previewURL = url
+                isDisplayPreview = true
+            }
+            .frame(maxWidth: 200)
         }
     }
     
