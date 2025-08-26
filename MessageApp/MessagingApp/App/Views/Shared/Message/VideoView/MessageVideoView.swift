@@ -41,8 +41,6 @@ struct MessageVideoView: View {
     private func createVideoPlayer() -> some View {
         return ZStack {
             VideoPlayer(player: player)
-                .clipShape(.rect(cornerRadius: 10))
-                .frame(width: 200, height: 300)
         }
     }
 }

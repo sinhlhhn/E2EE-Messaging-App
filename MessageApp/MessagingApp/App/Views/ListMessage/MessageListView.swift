@@ -94,8 +94,11 @@ struct MessageListView: View {
         switch message.type {
         case .text(let data):
             MessageView(content: data.content)
+                .frame(maxWidth: 200, alignment: message.isFromCurrentUser ? .trailing : .leading)
         case .video(let data):
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
+                .clipShape(.rect(cornerRadius: 10))
+                .frame(width: 200, height: 300)
         case .image(let data):
             //TODO: -Handle display multiple image here. Create a new collection image view
             // This code is used to create a Hero animation for the image.
@@ -132,7 +135,7 @@ struct MessageListView: View {
                 previewURL = url
                 isDisplayPreview = true
             }
-            .frame(maxWidth: 200)
+            .frame(maxWidth: 200, alignment: message.isFromCurrentUser ? .trailing : .leading)
         }
     }
     
