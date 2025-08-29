@@ -121,7 +121,7 @@ extension Factory {
         return ConversationView(viewModel: conversationViewModel)
     }
     
-    func createChat(sender: User, receiver: String, didTapBack: @escaping () -> Void) -> some View {
+    func createChat(sender: User, receiver: String, didTapBack: @escaping () -> Void, didDisplayDocument: @escaping (URL) -> Void) -> some View {
         if chatViewModel == nil {
             let encryptService = AESEncryptService()
             let decryptService = AESDecryption()
@@ -139,12 +139,12 @@ extension Factory {
         chatViewModel.receiver = receiver
         
         return ChatView(
-            viewModel: chatViewModel,
-            didCreateMessageListView: createChatView
-        )
+            viewModel: chatViewModel) { [unowned self] reachedTop, lastMessageId, messages, isFocused in
+                createChatView(reachedTop: reachedTop, lastMessageId: lastMessageId, messages: messages, isFocused: isFocused, didDisplayDocument: didDisplayDocument)
+            }
     }
     
-    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[Message]>, isFocused: FocusState<Bool>.Binding) -> MessageListView {
+    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[Message]>, isFocused: FocusState<Bool>.Binding, didDisplayDocument: @escaping (URL) -> Void) -> MessageListView {
         MessageListView(
             reachedTop: reachedTop,
             previousId: lastMessageId,
@@ -152,7 +152,8 @@ extension Factory {
             isFocused: isFocused,
             didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
             didCreateMessageImageViewModel: createMessageImageViewModel,
-            didCreateMessageVideoViewModel: createMessageVideoViewModel
+            didCreateMessageVideoViewModel: createMessageVideoViewModel,
+            didDisplayDocument: didDisplayDocument
         )
     }
     

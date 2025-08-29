@@ -41,32 +41,14 @@ struct MessageAttachmentView: View {
                 .padding()
                 .background(Color.gray.opacity(0.5))
                 .clipShape(.rect(cornerRadius: 20))
-                .onTapGesture {
-                    didTapItem(viewModel.getDestinationURL() ?? URL(string: "")!)
-                }
+                .highPriorityGesture(
+                    TapGesture().onEnded {
+                        didTapItem(viewModel.getDestinationURL() ?? URL(string: "")!)
+                    }
+                )
             }
         }.task {
             viewModel.getData()
         }
     }
 }
-
-import SwiftUI
-import PDFKit
-
-struct PDFKitView: UIViewRepresentable {
-    let url: URL
-    
-    func makeUIView(context: Context) -> PDFView {
-        let pdfView = PDFView()
-        pdfView.autoScales = true
-        pdfView.document = PDFDocument(url: url)
-        return pdfView
-    }
-    
-    func updateUIView(_ uiView: PDFView, context: Context) {}
-}
-
-//#Preview {
-//    MessageAttachmentView(fileTitle: "File title", fileSize: "File size")
-//}

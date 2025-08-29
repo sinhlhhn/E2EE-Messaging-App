@@ -7,9 +7,16 @@
 
 import SwiftUI
 
+struct DocumentData: Identifiable {
+    var id = UUID()
+    let url: URL
+}
+
 struct ContentView: View {
     
     @StateObject private var flow = Flow()
+    @State private var documentURL: DocumentData?
+    
     private let factory = Factory()
     
     var body: some View {
@@ -19,7 +26,9 @@ struct ContentView: View {
             }, didGoToConversation: { sender in
                 flow.start(type: .root(ConversationDestination.conversation(sender: sender)))
             })
-                
+            .sheet(item: $documentURL, content: { data in
+                PreviewController(url: data.url)
+            })
             .navigationDestination(for: ConversationDestination.self) { destination in
                 switch destination {
                 case .logIn:
@@ -36,11 +45,12 @@ struct ContentView: View {
                 case .chat(let sender, let receiver):
                     factory.createChat(sender: sender, receiver: receiver, didTapBack: {
                         flow.start(type: .popBack)
+                    }, didDisplayDocument: { url in
+                        documentURL = DocumentData(url: url)
                     })
                 }
             }
         }
-        
     }
 }
 
