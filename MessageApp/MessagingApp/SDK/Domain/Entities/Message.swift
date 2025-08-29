@@ -48,6 +48,7 @@ struct VideoMessage: Hashable, SingleMediaMessage {
 struct ImageMessage: Hashable {
     let path: URL
     let originalName: String
+    let groupId: String
     
     func getData() -> Data {
         return try! Data(contentsOf: path)
@@ -66,6 +67,7 @@ struct AttachmentMessage: Hashable, SingleMediaMessage {
 enum MessageType: Hashable {
     case text(TextMessageData)
     case image(ImageMessage)
+//    case image([ImageMessage])
     case video(VideoMessage)
     case attachment(AttachmentMessage)
 }

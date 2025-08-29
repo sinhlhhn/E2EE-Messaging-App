@@ -132,7 +132,7 @@ struct MessageListView: View {
     }
     
     @ViewBuilder
-    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
+    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {        
         MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
             viewModel.insertImage(image, forKey: id.uuidString)
             selectImage(id, image: image)

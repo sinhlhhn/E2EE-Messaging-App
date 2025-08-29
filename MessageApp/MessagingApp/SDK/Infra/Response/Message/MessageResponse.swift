@@ -16,6 +16,7 @@ struct MessageResponse: Codable {
     let mediaType: String
     let createdAt: String
     let originalName: String?
+    let groupId: String?
 }
 
 enum MediaType: String {

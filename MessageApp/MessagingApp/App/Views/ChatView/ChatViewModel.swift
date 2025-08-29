@@ -153,7 +153,7 @@ class ChatViewModel {
     }
     
     private func notifyNewMessageSent(result: UploadDataResponse) {
-        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName))
+        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName, groupId: result.groupId))
         service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type))
         messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
     }

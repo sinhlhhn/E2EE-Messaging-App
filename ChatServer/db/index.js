@@ -35,7 +35,7 @@ db.prepare(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     senderId INTEGER NOT NULL,
     receiverId INTEGER,
-    groupId INTEGER,
+    groupId TEXT,
     text TEXT,
     mediaUrl TEXT,
     mediaType TEXT,

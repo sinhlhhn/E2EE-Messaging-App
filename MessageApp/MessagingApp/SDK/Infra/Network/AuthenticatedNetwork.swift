@@ -169,7 +169,7 @@ final class AuthenticatedNetwork: NetworkModule {
                 case .attachment:
                     return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
                 case .image:
-                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!, groupId: $0.groupId!)), isFromCurrentUser: $0.sender == sender)
                 case .video:
                     return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
                 }
