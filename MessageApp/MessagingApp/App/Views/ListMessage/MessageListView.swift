@@ -10,7 +10,7 @@ import SwiftUI
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?
-    @Binding var messages: [Message]
+    @Binding var messages: [[Message]]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     @State private var viewModel: MessageListViewModel = .init()
@@ -31,17 +31,19 @@ struct MessageListView: View {
                 if reachedTop {
                     ProgressView()
                 }
-                List(messages)  { message in
-                    HStack {
-                        if message.isFromCurrentUser {
-                            Spacer()
-                        }
-                        createMessageView(message)
-                            .onAppear {
-                                if message.messageId == messages.first?.messageId, isScrollUp {
-                                    reachedTop = true
-                                }
+                List(messages, id: \.self)  { message in
+                    ForEach(message) { message in
+                        HStack {
+                            if message.isFromCurrentUser {
+                                Spacer()
                             }
+                            createMessageView(message)
+//                                .onAppear {
+//                                    if message.messageId == messages.first?.messageId, isScrollUp {
+//                                        reachedTop = true
+//                                    }
+//                                }
+                        }
                     }
                     .listRowSeparator(.hidden)
                 }

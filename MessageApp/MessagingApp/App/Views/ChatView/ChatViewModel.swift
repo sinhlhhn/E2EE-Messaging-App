@@ -20,7 +20,7 @@ class ChatViewModel {
     private let service: any SocketUseCase<String, SocketMessage>
     private let uploadService: NetworkModule
     private let messageService: MessageUseCase
-    var messages: [Message] = []
+    var messages: [[Message]] = []
     var reachedTop: Bool = false
     
     private var firstMessageId: Int?
@@ -69,7 +69,8 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] response in
                 if let id = Int(response.messageId) {
-                    self?.messages.append(Message(messageId: id, type: response.messageType, isFromCurrentUser: false))
+                    //TODO: -This way will cause the UI update 1 image at a times. How to wait and display group of image instead
+                    self?.messages.append([Message(messageId: id, type: response.messageType, isFromCurrentUser: false, groupId: response.groupId)])
                 } else {
                     debugPrint("❌ cannot get id from message")
                 }
@@ -114,7 +115,6 @@ class ChatViewModel {
     }
     
     private func uploadVideo(_ video: Movie) {
-        debugPrint("🙈 \(video.url.path)")
         sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
     }
     
@@ -153,9 +153,10 @@ class ChatViewModel {
     }
     
     private func notifyNewMessageSent(result: UploadDataResponse) {
-        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName, groupId: result.groupId))
-        service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type))
-        messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
+        let groupId = UUID()
+        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName))
+        service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId))
+        messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: groupId)])
     }
     
     func sendAttachment(urls: [URL]) {
@@ -169,8 +170,8 @@ class ChatViewModel {
     func sendMessage(_ type: MessageType) {
         switch type {
         case .text(let textData):
-            service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type))
-            messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
+            service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type, groupId: nil))
+            messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
         case .image(let VideoMessage):
             //TODO: handle image
             break
@@ -189,8 +190,8 @@ class ChatViewModel {
                         return
                     }
                     let type = MessageType.video(.init(path: url, originalName: url.lastPathComponent))
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type))
-                    messages.append(Message(messageId: 0, type: type, isFromCurrentUser: true))
+                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: nil))
+                    messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
                 }
                 .store(in: &cancellables)
             
@@ -206,8 +207,8 @@ class ChatViewModel {
                     print("uploadFile receiveValue")
                     let attachmentType: MessageType = .attachment(.init(path: URL(string: response.path)!, originalName: response.originalName))
                     //TODO: -Currently, the owner also need to download the file from the server and then save to the Document/Download folder. We may need to move the file to the Document/Download folder to prevent unnecessary network call. It quite complex because currently, we let the server to generate the file name to avoid duplicated file.
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: attachmentType))
-                    messages.append(Message(messageId: 0, type: attachmentType, isFromCurrentUser: true))
+                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: attachmentType, groupId: nil))
+                    messages.append([Message(messageId: 0, type: attachmentType, isFromCurrentUser: true, groupId: nil)])
                 }
                 .store(in: &cancellables)
         }
@@ -228,6 +229,9 @@ class ChatViewModel {
                 self.messageService.fetchMessages(data: data)
                     .replaceError(with: [])
             }
+            .map { messages -> [[Message]] in
+                self.map(from: messages)
+            }
             .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
@@ -238,15 +242,24 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] messages in
                 guard let self else { return }
-                self.messages.insert(contentsOf: messages, at: 0)
-                if let firstMessageId = messages.first?.messageId {
-                    self.firstMessageId = firstMessageId
-                }
-                if let lastMessageId = messages.last?.messageId {
-                    self.lastMessageId = lastMessageId
-                }
-                self.reachedTop = false
+                self.messages = messages
+                //TODO: -Auto scroll to the latest message
+//                if let firstMessageId = messages.first?.messageId {
+//                    self.firstMessageId = firstMessageId
+//                }
+//                if let lastMessageId = messages.last?.messageId {
+//                    self.lastMessageId = lastMessageId
+//                }
+//                self.reachedTop = false
             }
+    }
+    
+    private func map(from messages: [Message]) -> [[Message]] {
+        let groupedDict = Dictionary(grouping: messages) { msg in
+            msg.groupId ?? msg.id
+        }
+        
+        return groupedDict.values.map { $0 }
     }
     
     func reset() {

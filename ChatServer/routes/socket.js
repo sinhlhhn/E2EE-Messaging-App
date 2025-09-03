@@ -39,7 +39,7 @@ function initializeSocket(server) {
             `);
             const result = insert.run(senderRow.id, receiverRow.id, text || null, mediaUrl || null, mediaType || null, originalName || null, groupId || null);
             const messageId = result.lastInsertRowid;
-
+            console.log('========= groupId', groupId);
             // Emit to receiver if online
             const receiverSocket = connectedUsers.get(receiver);
             if (receiverSocket) {

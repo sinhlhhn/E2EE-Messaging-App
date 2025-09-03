@@ -10,5 +10,4 @@ import Foundation
 struct UploadDataResponse: Decodable {
     let path: String
     let originalName: String
-    let groupId: String
 }

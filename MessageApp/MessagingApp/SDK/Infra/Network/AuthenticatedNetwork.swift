@@ -161,17 +161,18 @@ final class AuthenticatedNetwork: NetworkModule {
             .map { $0.map {
                 guard let mediaType = MediaType(rawValue: $0.mediaType) else {
                     debugPrint("❌ cannot parse mediaType: \(String(describing: $0.mediaType))")
-                    return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 }
                 switch mediaType {
                 case .text:
-                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 case .attachment:
-                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 case .image:
-                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!, groupId: $0.groupId!)), isFromCurrentUser: $0.sender == sender)
+                    let groupId: UUID? = $0.groupId == nil ? nil : UUID(uuidString: $0.groupId!)
+                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: groupId)
                 case .video:
-                    return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender)
+                    return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 }
             }}
             .eraseToAnyPublisher()
