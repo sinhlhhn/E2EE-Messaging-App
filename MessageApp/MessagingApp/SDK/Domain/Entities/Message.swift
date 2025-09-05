@@ -48,10 +48,6 @@ struct VideoMessage: Hashable, SingleMediaMessage {
 struct ImageMessage: Hashable {
     let path: URL
     let originalName: String
-    
-    func getData() -> Data {
-        return try! Data(contentsOf: path)
-    }
 }
 
 struct AttachmentMessage: Hashable, SingleMediaMessage {

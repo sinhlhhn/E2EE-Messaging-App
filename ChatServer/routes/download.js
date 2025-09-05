@@ -12,6 +12,7 @@ router.get('/download/:fileType/:userId/:filePath', (req, res) => {
 
   // Security check: ensure the resolved path stays inside uploads directory
   if (!targetPath.startsWith(safeRoot)) {
+    console.log(`❌ targetPath ${targetPath}`);
     return res.status(400).json({ error: "Invalid file path" });
   }
 

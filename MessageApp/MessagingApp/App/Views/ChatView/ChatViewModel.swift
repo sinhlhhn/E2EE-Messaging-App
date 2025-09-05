@@ -17,7 +17,7 @@ class ChatViewModel {
     //TODO: -should be let
     var sender: User
     var receiver: String
-    private let service: any SocketUseCase<String, SocketMessage>
+    private let service: any SocketUseCase<String, SocketData>
     private let uploadService: NetworkModule
     private let messageService: MessageUseCase
     var messages: [[Message]] = []
@@ -33,10 +33,15 @@ class ChatViewModel {
     
     private let didTapBack: () -> Void
     
-    var imageSelection: PhotosPickerItem? {
+    var imageSelection: [PhotosPickerItem] = [] {
         didSet {
-            if let imageSelection {
-                loadTransferable(from: imageSelection)
+            debugPrint("================ imageSelection changed", imageSelection.count)
+            Task {
+                do {
+                    try await loadTransferable(from: imageSelection)
+                } catch {
+                    debugPrint("Error loading transferable: \(error)")
+                }
             }
         }
     }
@@ -44,7 +49,7 @@ class ChatViewModel {
     init(
         sender: User,
         receiver: String,
-        service: any SocketUseCase<String, SocketMessage>,
+        service: any SocketUseCase<String, SocketData>,
         uploadService: NetworkModule,
         messageService: MessageUseCase,
         didTapBack: @escaping () -> Void
@@ -94,52 +99,29 @@ class ChatViewModel {
             }
     }
     
-    private func loadTransferable(from imageSelection: PhotosPickerItem) {
-        imageSelection.loadTransferable(type: Movie.self) { [weak self] result in
-            guard let self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let movie?):
-                    self.uploadVideo(movie)
-                case .success(nil):
-                    //TODO: -handle nil image
-                    self.loadImage(from: imageSelection)
-                    break
-                case .failure(let error):
-                    //TODO: -handle error
-                    debugPrint("❌ Failed to get the selected Movie.")
+    private func loadTransferable(from imageSelection: [PhotosPickerItem]) async throws {
+        if imageSelection.isEmpty {
+            return
+        }
+        var listData = [Data]()
+        for item in imageSelection {
+            let result = try await item.loadTransferable(type: Movie.self)
+            
+            if let result = result {
+                self.uploadVideo(result)
+            } else {
+                guard let data = try await self.loadImage(from: item) else {
+                    //TODO: -Handle error
+                    return
                 }
-                self.imageSelection = nil
+                listData.append(data)
             }
         }
-    }
-    
-    private func uploadVideo(_ video: Movie) {
-        sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
-    }
-    
-    private func loadImage(from imageSelection: PhotosPickerItem) {
-            imageSelection.loadTransferable(type: Data.self) { [weak self] result in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let image?):
-                        self.uploadImage(imageData: image)
-                    case .success(nil):
-                        //TODO: -handle nil image
-                        break
-                    case .failure(let error):
-                        //TODO: -handle error
-                        break
-                    }
-                    self.imageSelection = nil
-                }
-            }
-        }
-    
-    private func uploadImage(imageData: Data) {
+        self.imageSelection = []
         let fileName = "image.jpg"
-        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
+        let multipartImages = listData.map { MultipartImage(data: $0, fieldName: "media", fileName: fileName, mimeType: "image/jpg") }
+        
+        uploadService.uploadImage(images: multipartImages, fields: [.init(name: "mediaType", value: "image")])
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("uploadImage finish")
@@ -150,11 +132,43 @@ class ChatViewModel {
                 self?.notifyNewMessageSent(result: result)
             }
             .store(in: &cancellables)
+        
     }
     
-    private func notifyNewMessageSent(result: UploadDataResponse) {
+    private func uploadVideo(_ video: Movie) {
+        sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
+    }
+    
+    private func loadImage(from imageSelection: PhotosPickerItem) async throws -> Data? {
+        let data = try await imageSelection.loadTransferable(type: Data.self)
+        return data
+//        guard let data = data else {
+//            //TODO: -Handle nil data
+//            debugPrint("loading image failed")
+//            return
+//        }
+//        uploadImage(imageData: data)
+    }
+    
+//    private func uploadImage(imageData: Data) {
+//        let fileName = "image.jpg"
+//        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
+//            .sink { completion in
+//                switch completion {
+//                case .finished: debugPrint("uploadImage finish")
+//                case .failure(let error): debugPrint("uploadImage failure with error \(error.localizedDescription)")
+//                }
+//            } receiveValue: { [weak self] result in
+//                debugPrint("uploadImage result \(result)")
+//                self?.notifyNewMessageSent(result: result)
+//            }
+//            .store(in: &cancellables)
+//    }
+    
+    private func notifyNewMessageSent(result: UploadImageResponse) {
         let groupId = UUID()
-        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName))
+        let urls = result.paths.compactMap { URL(string: $0) }
+        let type: MessageType = .image(.init(paths: urls, originalNames: result.originalNames))
         service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId))
         messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: groupId)])
     }
@@ -230,7 +244,7 @@ class ChatViewModel {
                     .replaceError(with: [])
             }
             .map { messages -> [[Message]] in
-                self.map(from: messages)
+                self.groupContiguously(messages)
             }
             .receive(on: DispatchQueue.main)
             .sink { completion in
@@ -254,12 +268,32 @@ class ChatViewModel {
             }
     }
     
-    private func map(from messages: [Message]) -> [[Message]] {
-        let groupedDict = Dictionary(grouping: messages) { msg in
-            msg.groupId ?? msg.id
+    private func groupContiguously(_ messages: [Message]) -> [[Message]] {
+        var result: [[Message]] = []
+        var current: [Message] = []
+        var currentGroupId: UUID?
+
+        for msg in messages {
+            guard case .image = msg.type else {
+                if !current.isEmpty { result.append(current); current.removeAll(); currentGroupId = nil }
+                result.append([msg]) // non-images solo
+                continue
+            }
+
+            if let gid = msg.groupId {
+                if current.isEmpty || currentGroupId == gid {
+                    current.append(msg); currentGroupId = gid
+                } else {
+                    result.append(current)
+                    current = [msg]; currentGroupId = gid
+                }
+            } else {
+                if !current.isEmpty { result.append(current); current.removeAll(); currentGroupId = nil }
+                result.append([msg]) // image without groupId
+            }
         }
-        
-        return groupedDict.values.map { $0 }
+        if !current.isEmpty { result.append(current) }
+        return result
     }
     
     func reset() {

@@ -170,7 +170,7 @@ final class AuthenticatedNetwork: NetworkModule {
                     return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 case .image:
                     let groupId: UUID? = $0.groupId == nil ? nil : UUID(uuidString: $0.groupId!)
-                    return Message(messageId: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: groupId)
+                    return Message(messageId: $0.id, type: .image(.init(paths: [URL(string: $0.mediaUrl!)!], originalNames: [$0.originalName!])), isFromCurrentUser: $0.sender == sender, groupId: groupId)
                 case .video:
                     return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
                 }
@@ -221,9 +221,9 @@ final class AuthenticatedNetwork: NetworkModule {
     func uploadImage(
         images: [MultipartImage],
         fields: [FormField] = []
-    ) -> AnyPublisher<UploadDataResponse, Error> {
+    ) -> AnyPublisher<UploadImageResponse, Error> {
         guard let url = URL(string: "\(localhost)/upload") else {
-            return Fail<UploadDataResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+            return Fail<UploadImageResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         var multipart = MultipartRequest()
@@ -245,7 +245,7 @@ final class AuthenticatedNetwork: NetworkModule {
         let uploadRequest: (URLRequest, UploadData) = (request, .data(multipart.httpBody))
         
         return uploadNetwork.upload(request: uploadRequest)
-            .tryCompactMap { response -> UploadDataResponse? in
+            .tryCompactMap { response -> UploadImageResponse? in
                 switch response {
                 case .uploading(let percentage):
                     print(percentage)
@@ -255,7 +255,7 @@ final class AuthenticatedNetwork: NetworkModule {
                         let error = URLError(.badServerResponse)
                         throw error
                     }
-                    let result: UploadDataResponse = try GenericMapper.map(data: data, response: response)
+                    let result: UploadImageResponse = try GenericMapper.map(data: data, response: response)
                     return result
                 }
             }

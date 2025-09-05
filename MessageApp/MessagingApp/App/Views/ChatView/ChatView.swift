@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 
 import Combine
+import PhotosUI
 
 struct ChatView: View {
     @State private var lastContentOffset: CGFloat = 0

@@ -94,7 +94,7 @@ class MessageAttachmentViewModel {
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("fetchImageFromCloud finish")
-                case .failure(let error): debugPrint("fetchImageFromCloud failure with error \(error.localizedDescription)")
+                case .failure(let error): debugPrint("fetchImageFromCloud from \(source) failure with error \(error.localizedDescription)")
                 }
             } receiveValue: { [weak self] result in
                 guard let self else { return }

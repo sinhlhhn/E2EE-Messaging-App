@@ -67,14 +67,17 @@ class RemoteMessageService: MessageUseCase {
                 return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
             case .image(let data):
                 do {
-                    let content = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
+                    guard let encryptedPath = data.paths.first?.path,
+                          let encryptedOriginalName = data.originalNames.first else {
+                        throw NSError(domain: "", code: 0, userInfo: nil)
+                    }
+                    let content = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: encryptedPath) ?? Data())
                     let text = String(data: content, encoding: .utf8) ?? ""
                     let path = URL(string: text)!
-                    let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.originalName) ?? Data())
+                    let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: encryptedOriginalName) ?? Data())
                     let originalName = String(data: originalNameData, encoding: .utf8) ?? ""
-                    let groupIdData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: message.groupId?.uuidString ?? "") ?? Data())
-                    let groupId = String(data: groupIdData, encoding: .utf8) ?? ""
-                    return Message(messageId: message.messageId, type: .image(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: UUID(uuidString: groupId))
+                    let groupId = message.groupId?.uuidString ?? ""
+                    return Message(messageId: message.messageId, type: .image(.init(paths: [path], originalNames: [originalName])), isFromCurrentUser: message.isFromCurrentUser, groupId: UUID(uuidString: groupId))
                 } catch {
                     debugPrint("❌ cannot decrypt message attachment")
                     return Message(messageId: message.messageId, type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)

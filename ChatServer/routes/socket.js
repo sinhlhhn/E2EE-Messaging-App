@@ -39,7 +39,6 @@ function initializeSocket(server) {
             `);
             const result = insert.run(senderRow.id, receiverRow.id, text || null, mediaUrl || null, mediaType || null, originalName || null, groupId || null);
             const messageId = result.lastInsertRowid;
-            console.log('========= groupId', groupId);
             // Emit to receiver if online
             const receiverSocket = connectedUsers.get(receiver);
             if (receiverSocket) {
@@ -57,6 +56,61 @@ function initializeSocket(server) {
                 console.log("💌 Emitting to receiverSocket with data:", payload);
             } else {
                 console.error('send-message cannot find receiver', connectedUsers);
+            }
+        });
+
+        socket.on('send-images', ({ sender, receiver, text, mediaUrls, mediaType, originalNames, groupId }) => {
+            console.log('💌 send-images start');
+            if (!sender || !receiver || !Array.isArray(mediaUrls) || !Array.isArray(originalNames) || mediaUrls.length !== originalNames.length || mediaUrls.length === 0) {
+                console.error("send-images error:", { sender, receiver, text, mediaUrls, originalNames });
+                return;
+            }
+            const getUserId = db.prepare('SELECT id FROM users WHERE username = ?');
+            const senderRow = getUserId.get(sender);
+            const receiverRow = getUserId.get(receiver);
+            if (!senderRow || !receiverRow) {
+                console.error("send-images user not found:", { senderRow, receiverRow });
+                return;
+            }
+
+            // Store each image message in DB and collect payloads
+            const insert = db.prepare(`
+                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName, groupId)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            `);
+            const messages = [];
+            for (let i = 0; i < mediaUrls.length; i++) {
+                const mediaUrl = mediaUrls[i];
+                const originalName = originalNames[i];
+                const result = insert.run(
+                    senderRow.id,
+                    receiverRow.id,
+                    text || null,
+                    mediaUrl || null,
+                    mediaType || null,
+                    originalName || null,
+                    groupId || null
+                );
+                const messageId = result.lastInsertRowid;
+                messages.push({
+                    text,
+                    mediaUrl,
+                    mediaType,
+                    messageId,
+                    originalName
+                });
+            }
+            // Emit to receiver if online
+            const receiverSocket = connectedUsers.get(receiver);
+            if (receiverSocket) {
+                receiverSocket.emit('receive-images', {
+                    from: sender,
+                    groupId,
+                    messages
+                });
+                console.log("💌 Emitting to receiverSocket with images:", { groupId, messages });
+            } else {
+                console.error('send-images cannot find receiver', connectedUsers);
             }
         });
 
