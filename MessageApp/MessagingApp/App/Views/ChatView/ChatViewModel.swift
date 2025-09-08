@@ -20,7 +20,7 @@ class ChatViewModel {
     private let service: any SocketUseCase<String, SocketData>
     private let uploadService: NetworkModule
     private let messageService: MessageUseCase
-    var messages: [[Message]] = []
+    var messages: [Message] = []
     var reachedTop: Bool = false
     
     private var firstMessageId: Int?
@@ -73,12 +73,7 @@ class ChatViewModel {
                     debugPrint("socket get error: \(error.localizedDescription)")
                 }
             } receiveValue: { [weak self] response in
-                if let id = Int(response.messageId) {
-                    //TODO: -This way will cause the UI update 1 image at a times. How to wait and display group of image instead
-                    self?.messages.append([Message(messageId: id, type: response.messageType, isFromCurrentUser: false, groupId: response.groupId)])
-                } else {
-                    debugPrint("❌ cannot get id from message")
-                }
+                self?.messages.append(Message(type: response.messageType, isFromCurrentUser: false, groupId: response.groupId, createdDate: response.createdDate))
             }
         
         connect()
@@ -165,12 +160,14 @@ class ChatViewModel {
 //            .store(in: &cancellables)
 //    }
     
-    private func notifyNewMessageSent(result: UploadImageResponse) {
+    private func notifyNewMessageSent(result: [UploadDataResponse]) {
         let groupId = UUID()
-        let urls = result.paths.compactMap { URL(string: $0) }
-        let type: MessageType = .image(.init(paths: urls, originalNames: result.originalNames))
-        service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId))
-        messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: groupId)])
+        let urls = result
+        let images = result.map { ImageMessage(path: URL(string: $0.path)!, originalName: $0.originalName)}
+        let type: MessageType = .image(images)
+        let createdDate = Date().timeIntervalSince1970
+        service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId, createdDate: createdDate))
+        messages.append(Message(type: type, isFromCurrentUser: true, groupId: groupId, createdDate: createdDate))
     }
     
     func sendAttachment(urls: [URL]) {
@@ -182,10 +179,11 @@ class ChatViewModel {
     }
     
     func sendMessage(_ type: MessageType) {
+        let createdDate = Date().timeIntervalSince1970
         switch type {
         case .text(let textData):
-            service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type, groupId: nil))
-            messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
+            service.sendMessage(SocketMessage(sender: sender.username, receiver: receiver, messageType: type, groupId: nil, createdDate: createdDate))
+            messages.append(Message(type: type, isFromCurrentUser: true, groupId: nil, createdDate: createdDate))
         case .image(let VideoMessage):
             //TODO: handle image
             break
@@ -204,8 +202,8 @@ class ChatViewModel {
                         return
                     }
                     let type = MessageType.video(.init(path: url, originalName: url.lastPathComponent))
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: nil))
-                    messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
+                    service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: nil, createdDate: createdDate))
+                    messages.append(Message(type: type, isFromCurrentUser: true, groupId: nil, createdDate: createdDate))
                 }
                 .store(in: &cancellables)
             
@@ -221,8 +219,8 @@ class ChatViewModel {
                     print("uploadFile receiveValue")
                     let attachmentType: MessageType = .attachment(.init(path: URL(string: response.path)!, originalName: response.originalName))
                     //TODO: -Currently, the owner also need to download the file from the server and then save to the Document/Download folder. We may need to move the file to the Document/Download folder to prevent unnecessary network call. It quite complex because currently, we let the server to generate the file name to avoid duplicated file.
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: attachmentType, groupId: nil))
-                    messages.append([Message(messageId: 0, type: attachmentType, isFromCurrentUser: true, groupId: nil)])
+                    service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: attachmentType, groupId: nil, createdDate: createdDate))
+                    messages.append(Message(type: attachmentType, isFromCurrentUser: true, groupId: nil, createdDate: Date().timeIntervalSince1970))
                 }
                 .store(in: &cancellables)
         }
@@ -243,8 +241,8 @@ class ChatViewModel {
                 self.messageService.fetchMessages(data: data)
                     .replaceError(with: [])
             }
-            .map { messages -> [[Message]] in
-                self.groupContiguously(messages)
+            .map { messages -> [Message] in
+                self.groupMessages(messages)
             }
             .receive(on: DispatchQueue.main)
             .sink { completion in
@@ -268,32 +266,50 @@ class ChatViewModel {
             }
     }
     
-    private func groupContiguously(_ messages: [Message]) -> [[Message]] {
-        var result: [[Message]] = []
-        var current: [Message] = []
-        var currentGroupId: UUID?
+    private func groupMessages(_ messages: [Message]) -> [Message] {
+        var grouped: [UUID: [Message]] = [:]
+        var singles: [Message] = []
 
-        for msg in messages {
-            guard case .image = msg.type else {
-                if !current.isEmpty { result.append(current); current.removeAll(); currentGroupId = nil }
-                result.append([msg]) // non-images solo
-                continue
-            }
-
-            if let gid = msg.groupId {
-                if current.isEmpty || currentGroupId == gid {
-                    current.append(msg); currentGroupId = gid
-                } else {
-                    result.append(current)
-                    current = [msg]; currentGroupId = gid
-                }
+        for message in messages {
+            if let gid = message.groupId {
+                grouped[gid, default: []].append(message)
             } else {
-                if !current.isEmpty { result.append(current); current.removeAll(); currentGroupId = nil }
-                result.append([msg]) // image without groupId
+                singles.append(message)
             }
         }
-        if !current.isEmpty { result.append(current) }
-        return result
+
+        var result: [Message] = []
+
+        for (_, group) in grouped {
+            // merge images if they exist
+            let images = group.compactMap { msg -> [ImageMessage]? in
+                if case .image(let imgs) = msg.type {
+                    return imgs
+                }
+                return nil
+            }.flatMap { $0 }
+
+            if !images.isEmpty {
+                // build a new combined message
+                let combined = Message(
+                    type: .image(images),
+                    isFromCurrentUser: group.first?.isFromCurrentUser ?? false,
+                    groupId: group.first?.groupId,
+                    createdDate: group.first?.createdDate ?? Date().timeIntervalSince1970
+                )
+                result.append(combined)
+            }
+
+            // handle non-image messages inside same group normally
+            for msg in group {
+                if case .image = msg.type { continue }
+                result.append(msg)
+            }
+        }
+
+        result.append(contentsOf: singles)
+
+        return result.sorted { $0.createdDate < $1.createdDate }
     }
     
     func reset() {

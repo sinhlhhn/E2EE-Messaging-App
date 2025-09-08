@@ -14,7 +14,7 @@ struct MessageResponse: Codable {
     let text: String?
     let mediaUrl: String?
     let mediaType: String
-    let createdAt: String
+    let createdAt: Double
     let originalName: String?
     let groupId: String?
 }

@@ -18,7 +18,7 @@ function initializeSocket(server) {
             socket.emit('register');
         });
 
-        socket.on('send-message', ({ sender, receiver, text, mediaUrl, mediaType, originalName, groupId }) => {
+        socket.on('send-message', ({ sender, receiver, text, mediaUrl, mediaType, originalName, groupId, createdDate }) => {
             console.log('💌 send-message start');
             if (!sender || !receiver || (!text && !mediaUrl)) {
                 console.error("send-message error:", { sender, receiver, text, mediaUrl });
@@ -34,10 +34,19 @@ function initializeSocket(server) {
 
             // Store message in DB
             const insert = db.prepare(`
-                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName, groupId)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName, groupId, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            const result = insert.run(senderRow.id, receiverRow.id, text || null, mediaUrl || null, mediaType || null, originalName || null, groupId || null);
+            const result = insert.run(
+                senderRow.id,
+                receiverRow.id,
+                text || null,
+                mediaUrl || null,
+                mediaType || null,
+                originalName || null,
+                groupId || null,
+                createdDate
+            );
             const messageId = result.lastInsertRowid;
             // Emit to receiver if online
             const receiverSocket = connectedUsers.get(receiver);
@@ -49,7 +58,8 @@ function initializeSocket(server) {
                     mediaType,
                     messageId,
                     originalName,
-                    groupId
+                    groupId,
+                    createdDate
                 };
 
                 receiverSocket.emit('receive-message', payload);
@@ -59,7 +69,7 @@ function initializeSocket(server) {
             }
         });
 
-        socket.on('send-images', ({ sender, receiver, text, mediaUrls, mediaType, originalNames, groupId }) => {
+        socket.on('send-images', ({ sender, receiver, text, mediaUrls, mediaType, originalNames, groupId, createdDate }) => {
             console.log('💌 send-images start');
             if (!sender || !receiver || !Array.isArray(mediaUrls) || !Array.isArray(originalNames) || mediaUrls.length !== originalNames.length || mediaUrls.length === 0) {
                 console.error("send-images error:", { sender, receiver, text, mediaUrls, originalNames });
@@ -75,8 +85,8 @@ function initializeSocket(server) {
 
             // Store each image message in DB and collect payloads
             const insert = db.prepare(`
-                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName, groupId)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO messages (senderId, receiverId, text, mediaUrl, mediaType, originalName, groupId, createdAt)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             `);
             const messages = [];
             for (let i = 0; i < mediaUrls.length; i++) {
@@ -89,7 +99,8 @@ function initializeSocket(server) {
                     mediaUrl || null,
                     mediaType || null,
                     originalName || null,
-                    groupId || null
+                    groupId || null,
+                    createdDate
                 );
                 const messageId = result.lastInsertRowid;
                 messages.push({

@@ -17,36 +17,43 @@ router.post('/upload', authenticateToken, upload.array('media', 10), (req, res) 
     return res.status(400).json({ error: 'No files uploaded' });
   }
 
-  const paths = req.files.map(file => `/${mediaType}/${userId}/${file.filename}`);
-  const originalNames = req.files.map(file => `${file.filename}`);
-
-  res.json({
-    message: 'Upload successful',
-    groupId,
-    paths,
-    originalNames
-  });
+  if (mediaType == "image") {
+    const files = req.files.map(file => ({
+      path: `/${mediaType}/${userId}/${file.filename}`,
+      originalName: file.filename
+    }));
+    res.json(files);
+  } else {
+    const paths = req.files.map(file => `/${mediaType}/${userId}/${file.filename}`);
+    const originalNames = req.files.map(file => `${file.filename}`);
+    res.json({
+      message: 'Upload successful',
+      groupId,
+      paths,
+      originalNames
+    });
+  }
 });
 
-// router.post('/upload', authenticateToken, upload.single('media'), (req, res) => {
-//   if (!req.file) {
-//     console.log("No file uploaded");
-//     return res.status(400).json({ error: 'No file uploaded' });
-//   }
+router.post('/upload-single', authenticateToken, upload.single('media'), (req, res) => {
+  if (!req.file) {
+    console.log("No file uploaded");
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
 
-//   const mediaType = req.body.mediaType;
-//   const userId = req.user?.sub;
-//   const fileName = req.file.filename;
+  const mediaType = req.body.mediaType;
+  const userId = req.user?.sub;
+  const fileName = req.file.filename;
 
-// console.log(`✅ Upload successful: /${mediaType}/${userId}/${fileName}`);
+  console.log(`✅ Upload successful: /${mediaType}/${userId}/${fileName}`);
 
-//   res.status(200).json({
-//     message: 'Upload successful',
-//     filename: fileName,
-//     path: `/${mediaType}/${userId}/${fileName}`,
-//     originalName: fileName
-//   });
-// });
+  res.status(200).json({
+    message: 'Upload successful',
+    filename: fileName,
+    path: `/${mediaType}/${userId}/${fileName}`,
+    originalName: fileName
+  });
+});
 
 router.post("/upload/raw/:filename", authenticateToken, (req, res) => {
   console.log("Start upload...");

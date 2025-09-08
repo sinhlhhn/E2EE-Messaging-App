@@ -139,7 +139,7 @@ final class AuthenticatedNetwork: NetworkModule {
             .eraseToAnyPublisher()
     }
     
-    func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error> {
+    func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[RemoteMessage], any Error> {
         let sender = data.sender
         let urlString = "\(localhost)/api/messages/\(data.sender)/\(data.receiver)"
         
@@ -159,20 +159,21 @@ final class AuthenticatedNetwork: NetworkModule {
                 return result
             }
             .map { $0.map {
+                let createdDate = $0.createdAt
                 guard let mediaType = MediaType(rawValue: $0.mediaType) else {
                     debugPrint("❌ cannot parse mediaType: \(String(describing: $0.mediaType))")
-                    return Message(messageId: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender, groupId: nil)
+                    return RemoteMessage(type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 }
                 switch mediaType {
                 case .text:
-                    return Message(messageId: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
+                    return RemoteMessage(type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 case .attachment:
-                    return Message(messageId: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
+                    return RemoteMessage(type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 case .image:
                     let groupId: UUID? = $0.groupId == nil ? nil : UUID(uuidString: $0.groupId!)
-                    return Message(messageId: $0.id, type: .image(.init(paths: [URL(string: $0.mediaUrl!)!], originalNames: [$0.originalName!])), isFromCurrentUser: $0.sender == sender, groupId: groupId)
+                    return RemoteMessage(type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: groupId, createdDate: createdDate)
                 case .video:
-                    return Message(messageId: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil)
+                    return RemoteMessage(type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 }
             }}
             .eraseToAnyPublisher()
@@ -221,9 +222,9 @@ final class AuthenticatedNetwork: NetworkModule {
     func uploadImage(
         images: [MultipartImage],
         fields: [FormField] = []
-    ) -> AnyPublisher<UploadImageResponse, Error> {
+    ) -> AnyPublisher<[UploadDataResponse], Error> {
         guard let url = URL(string: "\(localhost)/upload") else {
-            return Fail<UploadImageResponse, Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
+            return Fail<[UploadDataResponse], Error>(error: NSError(domain: "", code: 0, userInfo: nil)).eraseToAnyPublisher()
         }
         
         var multipart = MultipartRequest()
@@ -245,7 +246,7 @@ final class AuthenticatedNetwork: NetworkModule {
         let uploadRequest: (URLRequest, UploadData) = (request, .data(multipart.httpBody))
         
         return uploadNetwork.upload(request: uploadRequest)
-            .tryCompactMap { response -> UploadImageResponse? in
+            .tryCompactMap { response -> [UploadDataResponse]? in
                 switch response {
                 case .uploading(let percentage):
                     print(percentage)
@@ -255,7 +256,7 @@ final class AuthenticatedNetwork: NetworkModule {
                         let error = URLError(.badServerResponse)
                         throw error
                     }
-                    let result: UploadImageResponse = try GenericMapper.map(data: data, response: response)
+                    let result: [UploadDataResponse] = try GenericMapper.map(data: data, response: response)
                     return result
                 }
             }

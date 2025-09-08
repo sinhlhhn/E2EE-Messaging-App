@@ -20,9 +20,9 @@ protocol NetworkModule {
     
     func fetchReceiverKey(username: String) -> AnyPublisher<String, Error>
     func fetchSalt(sender: String, receiver: String) -> AnyPublisher<String, Error>
-    func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[Message], any Error>
+    func fetchEncryptedMessages(data: FetchMessageData) -> AnyPublisher<[RemoteMessage], any Error>
     
-    func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<UploadImageResponse, Error>
+    func uploadImage(images: [MultipartImage], fields: [FormField]) -> AnyPublisher<[UploadDataResponse], Error>
     func uploadStreamRawData() -> AnyPublisher<Void, any Error>
     func downloadData(url: String) -> AnyPublisher<AppDownloadResponse, Error>
     

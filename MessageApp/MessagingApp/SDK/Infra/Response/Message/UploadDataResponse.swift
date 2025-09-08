@@ -11,8 +11,3 @@ struct UploadDataResponse: Decodable {
     let path: String
     let originalName: String
 }
-
-struct UploadImageResponse: Decodable {
-    let paths: [String]
-    let originalNames: [String]
-}

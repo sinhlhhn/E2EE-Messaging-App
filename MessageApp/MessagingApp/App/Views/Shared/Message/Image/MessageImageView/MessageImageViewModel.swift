@@ -19,11 +19,11 @@ class MessageImageViewModel {
     
     private let message: ImageMessage
     private var url: URL {
-        message.paths.first!
+        message.path
     }
     
     var originalName: String {
-        message.originalNames.first!
+        message.originalName
     }
     private let downloadNetwork: NetworkModule
     
@@ -132,19 +132,19 @@ class GroupMessageImageViewModel {
     
     private(set) var viewState: ViewState = .loading
     
-    private let message: ImageMessage
+    private let message: [ImageMessage]
     private var urls: [URL] {
-        message.paths
+        message.map { $0.path }
     }
     
     var originalName: [String] {
-        message.originalNames
+        message.map { $0.originalName }
     }
     private let downloadNetwork: NetworkModule
     
     private var cancellables: Set<AnyCancellable> = []
     
-    init(message: ImageMessage, downloadNetwork: NetworkModule) {
+    init(message: [ImageMessage], downloadNetwork: NetworkModule) {
         self.message = message
         self.downloadNetwork = downloadNetwork
     }

@@ -10,7 +10,7 @@ import SwiftUI
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?
-    @Binding var messages: [[Message]]
+    @Binding var messages: [Message]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     @State private var viewModel: MessageListViewModel = .init()
@@ -83,7 +83,7 @@ struct MessageListView: View {
     }
     
     @ViewBuilder
-    private func createMessageView(_ message: [Message]) -> some View {
+    private func createMessageView(_ message: Message) -> some View {
         switch message.type {
         case .text(let data):
             MessageView(content: data.content)
@@ -92,11 +92,11 @@ struct MessageListView: View {
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
                 .clipShape(.rect(cornerRadius: 10))
                 .frame(width: 200, height: 300)
-        case .image(let data):
-            if data.paths.count == 1 {
-                createSingleImageMessage(data: data, message: message)
+        case .image(let images):
+            if images.count == 1 {
+                createSingleImageMessage(data: images[0], message: message)
             } else {
-                createGroupImageMessage(data: data, message: message)
+                createGroupImageMessage(data: images, message: message)
             }
         case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
@@ -107,7 +107,7 @@ struct MessageListView: View {
     }
     
     @ViewBuilder
-    private func createGroupImageMessage(data: ImageMessage, message: Message) -> some View {
+    private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
         
     }
     
