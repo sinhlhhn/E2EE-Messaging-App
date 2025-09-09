@@ -10,7 +10,7 @@ import SwiftUI
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?
-    @Binding var messages: [[Message]]
+    @Binding var messages: [Message]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     @State private var viewModel: MessageListViewModel = .init()
@@ -22,6 +22,7 @@ struct MessageListView: View {
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
     var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
+    var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
     var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
     var didDisplayDocument: ((URL) -> Void)
     
@@ -32,18 +33,16 @@ struct MessageListView: View {
                     ProgressView()
                 }
                 List(messages, id: \.self)  { message in
-                    ForEach(message) { message in
-                        HStack {
-                            if message.isFromCurrentUser {
-                                Spacer()
-                            }
-                            createMessageView(message)
-//                                .onAppear {
-//                                    if message.messageId == messages.first?.messageId, isScrollUp {
-//                                        reachedTop = true
-//                                    }
-//                                }
+                    HStack {
+                        if message.isFromCurrentUser {
+                            Spacer()
                         }
+                        createMessageView(message)
+//                            .onAppear {
+//                                if message.messageId == messages.first?.messageId, isScrollUp {
+//                                    reachedTop = true
+//                                }
+//                            }
                     }
                     .listRowSeparator(.hidden)
                 }
@@ -94,42 +93,56 @@ struct MessageListView: View {
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
                 .clipShape(.rect(cornerRadius: 10))
                 .frame(width: 200, height: 300)
-        case .image(let data):
-            //TODO: -Handle display multiple image here. Create a new collection image view
-            // This code is used to create a Hero animation for the image.
-            // We have a thumbnail and a full-size image, and we want to create a Hero animation between them.
-            // The process is as follows:
-            //  - The app loads the image from disk.
-            //  - When the user taps the thumbnail image, the image flies from the thumbnail to the full-size version.
-            //  - When the user dismisses the full-size image, it flies back to the thumbnail.
-            //
-            // Issue:
-            //  - The problem is that `matchedGeometryEffect` only allows one view with the same ID and `isSource = true` at a time.
-            //    → To work around this, we create a placeholder and remove the thumbnail when transitioning to the full-size image.
-            //  - Since the thumbnail is removed, we have to reload the image from disk. This introduces a delay,
-            //    and we show a loading state to the user. However, this loading state prevents SwiftUI from recognizing
-            //    the transition properly, resulting in a choppy animation.
-            //    → To fix this, we implement a caching mechanism to avoid loading from disk, allowing SwiftUI to perform
-            //    a smooth transition.
-            if let fullScreenImage = fullScreenImage {
-                Image(uiImage: fullScreenImage)
-                    .resizable()
-                    .clipShape(.rect(cornerRadius: 10))
-                    .frame(width: 200, height: 200)
-            } else if let image = viewModel.image(forKey: message.id.uuidString) {
-                CachedMessageImageView(image: image, geoEffectId: message.id.uuidString, nsAnimation: nsAnimation) { image in
-                    selectImage(message.id, image: image)
-                }
-                .frame(width: 200, height: 200)
+        case .image(let images):
+            if images.count == 1 {
+                createSingleImageMessage(data: images[0], message: message)
             } else {
-                createMessageImageView(data: data, id: message.id)
-                    .frame(width: 200, height: 200)
+                createGroupImageMessage(data: images, message: message)
             }
         case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
                 didDisplayDocument(url)
             }
             .frame(maxWidth: 200, alignment: message.isFromCurrentUser ? .trailing : .leading)
+        }
+    }
+    
+    @ViewBuilder
+    private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
+        FannedGroupImageView(viewModel: didCreateGroupMessageImageViewModel(data))
+    }
+    
+    @ViewBuilder
+    private func createSingleImageMessage(data: ImageMessage, message: Message) -> some View {
+        //TODO: -Handle display multiple image here. Create a new collection image view
+        // This code is used to create a Hero animation for the image.
+        // We have a thumbnail and a full-size image, and we want to create a Hero animation between them.
+        // The process is as follows:
+        //  - The app loads the image from disk.
+        //  - When the user taps the thumbnail image, the image flies from the thumbnail to the full-size version.
+        //  - When the user dismisses the full-size image, it flies back to the thumbnail.
+        //
+        // Issue:
+        //  - The problem is that `matchedGeometryEffect` only allows one view with the same ID and `isSource = true` at a time.
+        //    → To work around this, we create a placeholder and remove the thumbnail when transitioning to the full-size image.
+        //  - Since the thumbnail is removed, we have to reload the image from disk. This introduces a delay,
+        //    and we show a loading state to the user. However, this loading state prevents SwiftUI from recognizing
+        //    the transition properly, resulting in a choppy animation.
+        //    → To fix this, we implement a caching mechanism to avoid loading from disk, allowing SwiftUI to perform
+        //    a smooth transition.
+        if let fullScreenImage = fullScreenImage {
+            Image(uiImage: fullScreenImage)
+                .resizable()
+                .clipShape(.rect(cornerRadius: 10))
+                .frame(width: 200, height: 200)
+        } else if let image = viewModel.image(forKey: message.id.uuidString) {
+            CachedMessageImageView(image: image, geoEffectId: message.id.uuidString, nsAnimation: nsAnimation) { image in
+                selectImage(message.id, image: image)
+            }
+            .frame(width: 200, height: 200)
+        } else {
+            createMessageImageView(data: data, id: message.id)
+                .frame(width: 200, height: 200)
         }
     }
     

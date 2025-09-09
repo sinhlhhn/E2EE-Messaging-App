@@ -58,26 +58,28 @@ class RemoteMessageService: MessageUseCase {
             
     }
     
-    private func decryptMessage(_ messages: [Message], secureKey: Data) -> [Message] {
+    private func decryptMessage(_ messages: [RemoteMessage], secureKey: Data) -> [Message] {
         messages.map { message in
+            let createdDate = message.createdDate
             switch message.type {
             case .text(let data):
                 let content = try? self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.getData()) ?? Data())
                 let text = String(data: content ?? Data(), encoding: .utf8) ?? ""
-                return Message(messageId: message.messageId, type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                return Message(type: .text(.init(content: text)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
             case .image(let data):
                 do {
-                    let content = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.path.path) ?? Data())
+                    let encryptedPath = data.path.path
+                    let encryptedOriginalName = data.originalName
+                    let content = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: encryptedPath) ?? Data())
                     let text = String(data: content, encoding: .utf8) ?? ""
                     let path = URL(string: text)!
-                    let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.originalName) ?? Data())
+                    let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: encryptedOriginalName) ?? Data())
                     let originalName = String(data: originalNameData, encoding: .utf8) ?? ""
-                    let groupIdData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: message.groupId?.uuidString ?? "") ?? Data())
-                    let groupId = String(data: groupIdData, encoding: .utf8) ?? ""
-                    return Message(messageId: message.messageId, type: .image(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: UUID(uuidString: groupId))
+                    let groupId = message.groupId?.uuidString ?? ""
+                    return Message(type: .image([.init(path: path, originalName: originalName)]), isFromCurrentUser: message.isFromCurrentUser, groupId: UUID(uuidString: groupId), createdDate: createdDate)
                 } catch {
                     debugPrint("❌ cannot decrypt message attachment")
-                    return Message(messageId: message.messageId, type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                    return Message(type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
                 }
             case .video(let data):
                 do {
@@ -86,10 +88,10 @@ class RemoteMessageService: MessageUseCase {
                     let path = URL(string: text)!
                     let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.originalName) ?? Data())
                     let originalName = String(data: originalNameData, encoding: .utf8) ?? ""
-                    return Message(messageId: message.messageId, type: .video(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                    return Message(type: .video(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
                 } catch {
                     debugPrint("❌ cannot decrypt message video")
-                    return Message(messageId: message.messageId, type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                    return Message(type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
                 }
             case .attachment(let data):
                 do {
@@ -98,10 +100,10 @@ class RemoteMessageService: MessageUseCase {
                     let path = URL(string: text)!
                     let originalNameData = try self.decryptService.decryptMessage(with: secureKey, combined: Data(base64Encoded: data.originalName) ?? Data())
                     let originalName = String(data: originalNameData, encoding: .utf8) ?? ""
-                    return Message(messageId: message.messageId, type: .attachment(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                    return Message(type: .attachment(.init(path: path, originalName: originalName)), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
                 } catch {
                     debugPrint("❌ cannot decrypt message attachment")
-                    return Message(messageId: message.messageId, type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil)
+                    return Message(type: .text(.init(content: "Error message")), isFromCurrentUser: message.isFromCurrentUser, groupId: nil, createdDate: createdDate)
                 }
             }
         }

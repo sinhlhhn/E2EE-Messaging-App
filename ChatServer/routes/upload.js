@@ -8,23 +8,34 @@ const { v4: uuidv4 } = require('uuid');
 
 router.use(authenticateToken);
 
-// router.post('/upload', upload.single('media'), (req, res) => {
-//   if (!req.file) {
-//     console.log("No file uploaded");
-//     return res.status(400).json({ error: 'No file uploaded' });
-//   }
+router.post('/upload', authenticateToken, upload.array('media', 10), (req, res) => {
+  const mediaType = req.body.mediaType;
+  const userId = req.user?.sub;
+  const groupId = req.body.groupId || uuidv4(); // client can provide or server generates
 
-//   // Extract the subfolder from the file path to build the correct relative URL
-//   const relativePath = req.file.path.split("uploads")[1]
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'No files uploaded' });
+  }
 
-//   res.status(200).json({
-//     message: 'Upload successful',
-//     filename: req.file.filename,
-//     path: `/${relativePath}`
-//   });
-// });
+  if (mediaType == "image") {
+    const files = req.files.map(file => ({
+      path: `/${mediaType}/${userId}/${file.filename}`,
+      originalName: file.filename
+    }));
+    res.json(files);
+  } else {
+    const paths = req.files.map(file => `/${mediaType}/${userId}/${file.filename}`);
+    const originalNames = req.files.map(file => `${file.filename}`);
+    res.json({
+      message: 'Upload successful',
+      groupId,
+      paths,
+      originalNames
+    });
+  }
+});
 
-router.post('/upload', authenticateToken, upload.single('media'), (req, res) => {
+router.post('/upload-single', authenticateToken, upload.single('media'), (req, res) => {
   if (!req.file) {
     console.log("No file uploaded");
     return res.status(400).json({ error: 'No file uploaded' });
@@ -34,7 +45,7 @@ router.post('/upload', authenticateToken, upload.single('media'), (req, res) => 
   const userId = req.user?.sub;
   const fileName = req.file.filename;
 
-console.log(`✅ Upload successful: /${mediaType}/${userId}/${fileName}`);
+  console.log(`✅ Upload successful: /${mediaType}/${userId}/${fileName}`);
 
   res.status(200).json({
     message: 'Upload successful',

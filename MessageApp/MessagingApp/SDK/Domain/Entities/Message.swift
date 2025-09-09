@@ -29,6 +29,7 @@ extension SingleMediaMessage {
 }
 
 struct TextMessageData: Hashable {
+    let id = UUID()
     let content: String
     
     func getData() -> Data {
@@ -37,6 +38,7 @@ struct TextMessageData: Hashable {
 }
 
 struct VideoMessage: Hashable, SingleMediaMessage {
+    let id = UUID()
     let path: URL
     let originalName: String
     
@@ -46,15 +48,13 @@ struct VideoMessage: Hashable, SingleMediaMessage {
 }
 
 struct ImageMessage: Hashable {
+    let id = UUID()
     let path: URL
     let originalName: String
-    
-    func getData() -> Data {
-        return try! Data(contentsOf: path)
-    }
 }
 
 struct AttachmentMessage: Hashable, SingleMediaMessage {
+    let id = UUID()
     let path: URL
     let originalName: String
     
@@ -63,24 +63,32 @@ struct AttachmentMessage: Hashable, SingleMediaMessage {
     }
 }
 
-enum MessageType: Hashable {
+enum RemoteMessageType: Hashable {
     case text(TextMessageData)
     case image(ImageMessage)
     case video(VideoMessage)
     case attachment(AttachmentMessage)
 }
 
+struct RemoteMessage {
+    let id = UUID()
+    let type: RemoteMessageType
+    let isFromCurrentUser: Bool
+    let groupId: UUID?
+    let createdDate: Double
+}
+
+enum MessageType: Hashable {
+    case text(TextMessageData)
+    case image([ImageMessage])
+    case video(VideoMessage)
+    case attachment(AttachmentMessage)
+}
+
 struct Message: Identifiable, Hashable {
     let id = UUID()
-    let messageId: Int
     let type: MessageType
     let isFromCurrentUser: Bool
     let groupId: UUID?
-    
-    init(messageId: Int, type: MessageType, isFromCurrentUser: Bool, groupId: UUID?) {
-        self.messageId = messageId
-        self.type = type
-        self.isFromCurrentUser = isFromCurrentUser
-        self.groupId = groupId
-    }
+    let createdDate: Double
 }

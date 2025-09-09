@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 
 import Combine
+import PhotosUI
 
 struct ChatView: View {
     @State private var lastContentOffset: CGFloat = 0
@@ -17,11 +18,11 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
-    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[[Message]]>, FocusState<Bool>.Binding) -> MessageListView
+    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
     
     init(
         viewModel: ChatViewModel,
-        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[[Message]]>, FocusState<Bool>.Binding) -> MessageListView
+        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
     ) {
         self.viewModel = viewModel
         self.didCreateMessageListView = didCreateMessageListView

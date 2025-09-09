@@ -144,7 +144,7 @@ extension Factory {
             }
     }
     
-    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[[Message]]>, isFocused: FocusState<Bool>.Binding, didDisplayDocument: @escaping (URL) -> Void) -> MessageListView {
+    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[Message]>, isFocused: FocusState<Bool>.Binding, didDisplayDocument: @escaping (URL) -> Void) -> MessageListView {
         MessageListView(
             reachedTop: reachedTop,
             previousId: lastMessageId,
@@ -152,9 +152,14 @@ extension Factory {
             isFocused: isFocused,
             didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
             didCreateMessageImageViewModel: createMessageImageViewModel,
+            didCreateGroupMessageImageViewModel: createGroupMessageImageViewModel,
             didCreateMessageVideoViewModel: createMessageVideoViewModel,
             didDisplayDocument: didDisplayDocument
         )
+    }
+    
+    private func createGroupMessageImageViewModel(_ messages: [ImageMessage]) -> GroupMessageImageViewModel {
+        GroupMessageImageViewModel(message: messages, downloadNetwork: authenticatedNetwork)
     }
     
     private func createMessageVideoViewModel(message: VideoMessage) -> MessageVideoViewModel {

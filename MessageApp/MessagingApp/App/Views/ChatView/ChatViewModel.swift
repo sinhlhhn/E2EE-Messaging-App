@@ -17,10 +17,10 @@ class ChatViewModel {
     //TODO: -should be let
     var sender: User
     var receiver: String
-    private let service: any SocketUseCase<String, SocketMessage>
+    private let service: any SocketUseCase<String, SocketData>
     private let uploadService: NetworkModule
     private let messageService: MessageUseCase
-    var messages: [[Message]] = []
+    var messages: [Message] = []
     var reachedTop: Bool = false
     
     private var firstMessageId: Int?
@@ -33,10 +33,15 @@ class ChatViewModel {
     
     private let didTapBack: () -> Void
     
-    var imageSelection: PhotosPickerItem? {
+    var imageSelection: [PhotosPickerItem] = [] {
         didSet {
-            if let imageSelection {
-                loadTransferable(from: imageSelection)
+            debugPrint("================ imageSelection changed", imageSelection.count)
+            Task {
+                do {
+                    try await loadTransferable(from: imageSelection)
+                } catch {
+                    debugPrint("Error loading transferable: \(error)")
+                }
             }
         }
     }
@@ -44,7 +49,7 @@ class ChatViewModel {
     init(
         sender: User,
         receiver: String,
-        service: any SocketUseCase<String, SocketMessage>,
+        service: any SocketUseCase<String, SocketData>,
         uploadService: NetworkModule,
         messageService: MessageUseCase,
         didTapBack: @escaping () -> Void
@@ -68,12 +73,7 @@ class ChatViewModel {
                     debugPrint("socket get error: \(error.localizedDescription)")
                 }
             } receiveValue: { [weak self] response in
-                if let id = Int(response.messageId) {
-                    //TODO: -This way will cause the UI update 1 image at a times. How to wait and display group of image instead
-                    self?.messages.append([Message(messageId: id, type: response.messageType, isFromCurrentUser: false, groupId: response.groupId)])
-                } else {
-                    debugPrint("❌ cannot get id from message")
-                }
+                self?.messages.append(Message(type: response.messageType, isFromCurrentUser: false, groupId: response.groupId, createdDate: response.createdDate))
             }
         
         connect()
@@ -94,52 +94,29 @@ class ChatViewModel {
             }
     }
     
-    private func loadTransferable(from imageSelection: PhotosPickerItem) {
-        imageSelection.loadTransferable(type: Movie.self) { [weak self] result in
-            guard let self else { return }
-            DispatchQueue.main.async {
-                switch result {
-                case .success(let movie?):
-                    self.uploadVideo(movie)
-                case .success(nil):
-                    //TODO: -handle nil image
-                    self.loadImage(from: imageSelection)
-                    break
-                case .failure(let error):
-                    //TODO: -handle error
-                    debugPrint("❌ Failed to get the selected Movie.")
+    private func loadTransferable(from imageSelection: [PhotosPickerItem]) async throws {
+        if imageSelection.isEmpty {
+            return
+        }
+        var listData = [Data]()
+        for item in imageSelection {
+            let result = try await item.loadTransferable(type: Movie.self)
+            
+            if let result = result {
+                self.uploadVideo(result)
+            } else {
+                guard let data = try await self.loadImage(from: item) else {
+                    //TODO: -Handle error
+                    return
                 }
-                self.imageSelection = nil
+                listData.append(data)
             }
         }
-    }
-    
-    private func uploadVideo(_ video: Movie) {
-        sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
-    }
-    
-    private func loadImage(from imageSelection: PhotosPickerItem) {
-            imageSelection.loadTransferable(type: Data.self) { [weak self] result in
-                guard let self else { return }
-                DispatchQueue.main.async {
-                    switch result {
-                    case .success(let image?):
-                        self.uploadImage(imageData: image)
-                    case .success(nil):
-                        //TODO: -handle nil image
-                        break
-                    case .failure(let error):
-                        //TODO: -handle error
-                        break
-                    }
-                    self.imageSelection = nil
-                }
-            }
-        }
-    
-    private func uploadImage(imageData: Data) {
+        self.imageSelection = []
         let fileName = "image.jpg"
-        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
+        let multipartImages = listData.map { MultipartImage(data: $0, fieldName: "media", fileName: fileName, mimeType: "image/jpg") }
+        
+        uploadService.uploadImage(images: multipartImages, fields: [.init(name: "mediaType", value: "image")])
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("uploadImage finish")
@@ -150,13 +127,47 @@ class ChatViewModel {
                 self?.notifyNewMessageSent(result: result)
             }
             .store(in: &cancellables)
+        
     }
     
-    private func notifyNewMessageSent(result: UploadDataResponse) {
+    private func uploadVideo(_ video: Movie) {
+        sendMessage(.video(.init(path: video.url, originalName: video.url.lastPathComponent)))
+    }
+    
+    private func loadImage(from imageSelection: PhotosPickerItem) async throws -> Data? {
+        let data = try await imageSelection.loadTransferable(type: Data.self)
+        return data
+//        guard let data = data else {
+//            //TODO: -Handle nil data
+//            debugPrint("loading image failed")
+//            return
+//        }
+//        uploadImage(imageData: data)
+    }
+    
+//    private func uploadImage(imageData: Data) {
+//        let fileName = "image.jpg"
+//        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
+//            .sink { completion in
+//                switch completion {
+//                case .finished: debugPrint("uploadImage finish")
+//                case .failure(let error): debugPrint("uploadImage failure with error \(error.localizedDescription)")
+//                }
+//            } receiveValue: { [weak self] result in
+//                debugPrint("uploadImage result \(result)")
+//                self?.notifyNewMessageSent(result: result)
+//            }
+//            .store(in: &cancellables)
+//    }
+    
+    private func notifyNewMessageSent(result: [UploadDataResponse]) {
         let groupId = UUID()
-        let type: MessageType = .image(.init(path: URL(string: result.path)!, originalName: result.originalName))
-        service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId))
-        messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: groupId)])
+        let urls = result
+        let images = result.map { ImageMessage(path: URL(string: $0.path)!, originalName: $0.originalName)}
+        let type: MessageType = .image(images)
+        let createdDate = Date().timeIntervalSince1970
+        service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: groupId, createdDate: createdDate))
+        messages.append(Message(type: type, isFromCurrentUser: true, groupId: groupId, createdDate: createdDate))
     }
     
     func sendAttachment(urls: [URL]) {
@@ -168,10 +179,11 @@ class ChatViewModel {
     }
     
     func sendMessage(_ type: MessageType) {
+        let createdDate = Date().timeIntervalSince1970
         switch type {
         case .text(let textData):
-            service.sendMessage(SocketMessage(messageId: "", sender: sender.username, receiver: receiver, messageType: type, groupId: nil))
-            messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
+            service.sendMessage(SocketMessage(sender: sender.username, receiver: receiver, messageType: type, groupId: nil, createdDate: createdDate))
+            messages.append(Message(type: type, isFromCurrentUser: true, groupId: nil, createdDate: createdDate))
         case .image(let VideoMessage):
             //TODO: handle image
             break
@@ -190,8 +202,8 @@ class ChatViewModel {
                         return
                     }
                     let type = MessageType.video(.init(path: url, originalName: url.lastPathComponent))
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: nil))
-                    messages.append([Message(messageId: 0, type: type, isFromCurrentUser: true, groupId: nil)])
+                    service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: type, groupId: nil, createdDate: createdDate))
+                    messages.append(Message(type: type, isFromCurrentUser: true, groupId: nil, createdDate: createdDate))
                 }
                 .store(in: &cancellables)
             
@@ -207,8 +219,8 @@ class ChatViewModel {
                     print("uploadFile receiveValue")
                     let attachmentType: MessageType = .attachment(.init(path: URL(string: response.path)!, originalName: response.originalName))
                     //TODO: -Currently, the owner also need to download the file from the server and then save to the Document/Download folder. We may need to move the file to the Document/Download folder to prevent unnecessary network call. It quite complex because currently, we let the server to generate the file name to avoid duplicated file.
-                    service.sendMessage(SocketMessage(messageId: "", sender: self.sender.username, receiver: self.receiver, messageType: attachmentType, groupId: nil))
-                    messages.append([Message(messageId: 0, type: attachmentType, isFromCurrentUser: true, groupId: nil)])
+                    service.sendMessage(SocketMessage(sender: self.sender.username, receiver: self.receiver, messageType: attachmentType, groupId: nil, createdDate: createdDate))
+                    messages.append(Message(type: attachmentType, isFromCurrentUser: true, groupId: nil, createdDate: Date().timeIntervalSince1970))
                 }
                 .store(in: &cancellables)
         }
@@ -229,8 +241,8 @@ class ChatViewModel {
                 self.messageService.fetchMessages(data: data)
                     .replaceError(with: [])
             }
-            .map { messages -> [[Message]] in
-                self.map(from: messages)
+            .map { messages -> [Message] in
+                self.groupMessages(messages)
             }
             .receive(on: DispatchQueue.main)
             .sink { completion in
@@ -254,12 +266,50 @@ class ChatViewModel {
             }
     }
     
-    private func map(from messages: [Message]) -> [[Message]] {
-        let groupedDict = Dictionary(grouping: messages) { msg in
-            msg.groupId ?? msg.id
+    private func groupMessages(_ messages: [Message]) -> [Message] {
+        var grouped: [UUID: [Message]] = [:]
+        var singles: [Message] = []
+
+        for message in messages {
+            if let gid = message.groupId {
+                grouped[gid, default: []].append(message)
+            } else {
+                singles.append(message)
+            }
         }
-        
-        return groupedDict.values.map { $0 }
+
+        var result: [Message] = []
+
+        for (_, group) in grouped {
+            // merge images if they exist
+            let images = group.compactMap { msg -> [ImageMessage]? in
+                if case .image(let imgs) = msg.type {
+                    return imgs
+                }
+                return nil
+            }.flatMap { $0 }
+
+            if !images.isEmpty {
+                // build a new combined message
+                let combined = Message(
+                    type: .image(images),
+                    isFromCurrentUser: group.first?.isFromCurrentUser ?? false,
+                    groupId: group.first?.groupId,
+                    createdDate: group.first?.createdDate ?? Date().timeIntervalSince1970
+                )
+                result.append(combined)
+            }
+
+            // handle non-image messages inside same group normally
+            for msg in group {
+                if case .image = msg.type { continue }
+                result.append(msg)
+            }
+        }
+
+        result.append(contentsOf: singles)
+
+        return result.sorted { $0.createdDate < $1.createdDate }
     }
     
     func reset() {

@@ -10,7 +10,7 @@ import PhotosUI
 
 struct MediaMessageTextField: View {
     @State private var text: String = ""
-    @Binding var imageSelection: PhotosPickerItem?
+    @Binding var imageSelection: [PhotosPickerItem]
     
     @State private var isShowingMedia: Bool = true
     @State private var isPresentedAttachment: Bool = false
@@ -20,7 +20,7 @@ struct MediaMessageTextField: View {
     
     fileprivate init(
         text: String,
-        imageSelection: Binding<PhotosPickerItem?>,
+        imageSelection: Binding<[PhotosPickerItem]>,
         didSelectAttachments: @escaping ([URL]) -> Void,
         didTapSend: @escaping (String) -> Void
     ) {
@@ -31,7 +31,7 @@ struct MediaMessageTextField: View {
     }
     
     init(
-        imageSelection: Binding<PhotosPickerItem?>,
+        imageSelection: Binding<[PhotosPickerItem]>,
         didSelectAttachments: @escaping ([URL]) -> Void,
         didTapSend: @escaping (String) -> Void
     ) {
@@ -61,8 +61,7 @@ struct MediaMessageTextField: View {
     }
     
     private var imageView: some View {
-        PhotosPicker(selection: $imageSelection,
-                     photoLibrary: .shared()) {
+        PhotosPicker(selection: $imageSelection) {
             Image(systemName: "photo.badge.plus")
                 .font(.title2)
         }
@@ -87,10 +86,10 @@ struct MediaMessageTextField: View {
 }
 
 #Preview {
-    MediaMessageTextField(text: "", imageSelection: .constant(nil), didSelectAttachments: { _ in }, didTapSend: { _ in })
+    MediaMessageTextField(text: "", imageSelection: .constant([]), didSelectAttachments: { _ in }, didTapSend: { _ in })
         .padding()
-    MediaMessageTextField(text: "Short text", imageSelection: .constant(nil), didSelectAttachments: { _ in }, didTapSend: { _ in })
+    MediaMessageTextField(text: "Short text", imageSelection: .constant([]), didSelectAttachments: { _ in }, didTapSend: { _ in })
         .padding()
-    MediaMessageTextField(text: "Very long long long long long long long long text", imageSelection: .constant(nil), didSelectAttachments: { _ in }, didTapSend: { _ in })
+    MediaMessageTextField(text: "Very long long long long long long long long text", imageSelection: .constant([]), didSelectAttachments: { _ in }, didTapSend: { _ in })
         .padding()
 }
