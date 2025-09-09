@@ -10,8 +10,11 @@ import SwiftUI
 struct FannedGroupMessageImageView: View {
     @State private var viewModel: GroupMessageImageViewModel
     
-    init(viewModel: GroupMessageImageViewModel) {
+    private let didTapImage: ([UIImage]) -> Void
+    
+    init(viewModel: GroupMessageImageViewModel, didTapImage: @escaping ([UIImage]) -> Void) {
         self.viewModel = viewModel
+        self.didTapImage = didTapImage
     }
     
     var body: some View {
@@ -21,6 +24,10 @@ struct FannedGroupMessageImageView: View {
                 LoadingView()
             case .completed(let images):
                 createImageView(images)
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            didTapImage(images)
+                        })
             }
         }.task {
             viewModel.getData()

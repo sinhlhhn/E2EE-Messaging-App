@@ -14,10 +14,13 @@ struct MessageListView: View {
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
     @State private var viewModel: MessageListViewModel = .init()
+    @State private var caches: [UUID?: [UIImage]] = [:]
     
     // Image
     @State private var selectedId: String?
+    @State private var selectedGroupId: String?
     @State private var fullScreenImage: UIImage?
+    @State private var fullScreenGroupImage: [UIImage] = []
     @Namespace private var nsAnimation
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
@@ -80,6 +83,17 @@ struct MessageListView: View {
                         })
                     .zIndex(1) // During the transition, SwiftUI may assign a higher zIndex to the list because the full-size image is removed from the view hierarchy. To prevent the list from overlapping the full-size image, we manually set the zIndex to ensure the full-size image stays on top until the transition completes.
             }
+            
+            if !fullScreenGroupImage.isEmpty, let selectedGroupId = selectedGroupId {
+                FullScreenGroupMessageImageView(images: fullScreenGroupImage, geoEffectId: selectedGroupId, nsAnimation: nsAnimation)
+                    .highPriorityGesture(
+                        TapGesture().onEnded {
+                            withAnimation {
+                                self.fullScreenGroupImage = []
+                            }
+                        })
+                    .zIndex(1)
+            }
         }
     }
     
@@ -109,8 +123,33 @@ struct MessageListView: View {
     
     @ViewBuilder
     private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
-        FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data))
+        if !fullScreenGroupImage.isEmpty {
+            FannedImageView(images: fullScreenGroupImage)
+                .frame(width: 150, height: 150)
+        } else if let images = caches[message.groupId] {
+            FannedImageView(images: images)
+                .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
+                .frame(width: 150, height: 150)
+                .highPriorityGesture(
+                    TapGesture().onEnded {
+                        selectGroupImage(images, message: message)
+                    }
+                )
+        } else {
+            FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
+                selectGroupImage(images, message: message)
+            }
+            .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
             .frame(width: 150, height: 150)
+        }
+    }
+    
+    private func selectGroupImage(_ images: [UIImage], message: Message) {
+        withAnimation {
+            self.selectedGroupId = message.id.uuidString
+            self.fullScreenGroupImage = images
+            self.caches[message.groupId] = images
+        }
     }
     
     @ViewBuilder
@@ -148,7 +187,7 @@ struct MessageListView: View {
     }
     
     @ViewBuilder
-    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {        
+    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
         MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
             viewModel.insertImage(image, forKey: id.uuidString)
             selectImage(id, image: image)

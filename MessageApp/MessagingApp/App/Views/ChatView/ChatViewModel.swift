@@ -236,7 +236,6 @@ class ChatViewModel {
     
     private func fetchMessage() {
         fetchMessageCancellable = passthroughSubject
-            .delay(for: .seconds(2), scheduler: DispatchQueue.global())
             .flatMap(maxPublishers: .max(1)) { data in
                 self.messageService.fetchMessages(data: data)
                     .replaceError(with: [])
