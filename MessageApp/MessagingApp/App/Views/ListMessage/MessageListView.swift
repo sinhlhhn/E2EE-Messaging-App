@@ -22,6 +22,7 @@ struct MessageListView: View {
     
     var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
     var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
+    var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
     var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
     var didDisplayDocument: ((URL) -> Void)
     
@@ -108,7 +109,7 @@ struct MessageListView: View {
     
     @ViewBuilder
     private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
-        
+        FannedGroupImageView(viewModel: didCreateGroupMessageImageViewModel(data))
     }
     
     @ViewBuilder

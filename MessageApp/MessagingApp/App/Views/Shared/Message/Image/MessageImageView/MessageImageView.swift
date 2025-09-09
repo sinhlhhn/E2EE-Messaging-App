@@ -50,6 +50,10 @@ struct MessageImageView: View {
 struct FannedGroupImageView: View {
     @State private var viewModel: GroupMessageImageViewModel
     
+    init(viewModel: GroupMessageImageViewModel) {
+        self.viewModel = viewModel
+    }
+    
     var body: some View {
         Group {
             switch viewModel.viewState {
