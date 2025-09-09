@@ -109,7 +109,8 @@ struct MessageListView: View {
     
     @ViewBuilder
     private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
-        FannedGroupImageView(viewModel: didCreateGroupMessageImageViewModel(data))
+        FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data))
+            .frame(width: 150, height: 150)
     }
     
     @ViewBuilder

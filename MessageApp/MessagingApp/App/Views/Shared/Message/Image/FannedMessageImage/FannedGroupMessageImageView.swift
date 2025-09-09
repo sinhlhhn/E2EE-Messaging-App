@@ -1,5 +1,5 @@
 //
-//  FannedGroupImageView.swift
+//  FannedGroupMessageImageView.swift
 //  MessagingApp
 //
 //  Created by SinhLH.AVI on 9/9/25.
@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct FannedGroupImageView: View {
+struct FannedGroupMessageImageView: View {
     @State private var viewModel: GroupMessageImageViewModel
     
     init(viewModel: GroupMessageImageViewModel) {
@@ -19,10 +19,8 @@ struct FannedGroupImageView: View {
             switch viewModel.viewState {
             case .loading:
                 LoadingView()
-                    .frame(width: 200, height: 200)
             case .completed(let images):
                 createImageView(images)
-                    .frame(width: 200, height: 200)
             }
         }.task {
             viewModel.getData()
@@ -32,10 +30,23 @@ struct FannedGroupImageView: View {
     
     @ViewBuilder
     private func createImageView(_ images: [UIImage]) -> some View {
+        FannedImageView(images: images)
+    }
+}
+
+struct FannedImageView: View {
+    private let images: [UIImage]
+    
+    init(images: [UIImage]) {
+        self.images = images
+    }
+    
+    var body: some View {
         ZStack {
             ForEach(images.indices, id: \.self) { index in
                 Image(uiImage: images[index])
                     .resizable()
+                    .clipShape(.rect(cornerRadius: 10))
                     .rotationEffect(.degrees(calculateRotationAngle(index)))
                     .offset(x: calculateOffset(index).0, y: calculateOffset(index).1)
             }
@@ -62,3 +73,14 @@ struct FannedGroupImageView: View {
         return (0, 0)
     }
 }
+
+#Preview(body: {
+    FannedImageView(images: [
+        .init(named: "lion")!,
+        .init(named: "elephant")!,
+        .init(named: "dog")!,
+        .init(named: "horse")!,
+    ])
+    .frame(width: 150, height: 150)
+    
+})
