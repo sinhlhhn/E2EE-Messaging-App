@@ -71,7 +71,7 @@ enum RemoteMessageType: Hashable {
 }
 
 struct RemoteMessage {
-    let id = UUID()
+    let id: Int
     let type: RemoteMessageType
     let isFromCurrentUser: Bool
     let groupId: UUID?
@@ -80,13 +80,14 @@ struct RemoteMessage {
 
 enum MessageType: Hashable {
     case text(TextMessageData)
-    case image([ImageMessage])
+    case image(ImageMessage)
     case video(VideoMessage)
     case attachment(AttachmentMessage)
 }
 
 struct Message: Identifiable, Hashable {
     let id = UUID()
+    let remoteId: Int?
     let type: MessageType
     let isFromCurrentUser: Bool
     let groupId: UUID?

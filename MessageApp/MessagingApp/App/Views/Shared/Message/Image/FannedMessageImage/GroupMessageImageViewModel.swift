@@ -117,6 +117,7 @@ class GroupMessageImageViewModel {
         
         Publishers.MergeMany(publishers)
             .collect() // gather all results into [UIImage]
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 if case let .failure(error) = completion {
                     debugPrint("❌ download failed: \(error.localizedDescription)")

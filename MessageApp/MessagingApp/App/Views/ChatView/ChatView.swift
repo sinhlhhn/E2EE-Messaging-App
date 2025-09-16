@@ -18,11 +18,11 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
-    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
+    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[MessageGroup]>, FocusState<Bool>.Binding) -> MessageListView
     
     init(
         viewModel: ChatViewModel,
-        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[Message]>, FocusState<Bool>.Binding) -> MessageListView
+        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[MessageGroup]>, FocusState<Bool>.Binding) -> MessageListView
     ) {
         self.viewModel = viewModel
         self.didCreateMessageListView = didCreateMessageListView
@@ -63,7 +63,6 @@ struct ChatView: View {
             viewModel.loadFirstMessage()
         }
         .onChange(of: viewModel.reachedTop) { oldValue, newValue in
-            debugPrint("🟣 \(oldValue) - \(newValue)")
             if oldValue != newValue, newValue == true {
                 debugPrint("🟣 start load more")
                 viewModel.loadMoreMessages()

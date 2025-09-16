@@ -63,7 +63,7 @@ router.get('/messages/:userA/:userB', (req, res) => {
   const { userA, userB } = req.params;
   console.log('GET query: ', req.query);
   const before = parseInt(req.query.before) || Number.MAX_SAFE_INTEGER;
-  const limit = parseInt(req.query.limit) || 10;
+  const limit = parseInt(req.query.limit) || 15;
 
   console.log('GET before: ', before);
   console.log('GET limit: ', limit);
@@ -85,7 +85,7 @@ router.get('/messages/:userA/:userB', (req, res) => {
   `);
 
   const messages = stmt.all(a.id, b.id, b.id, a.id, before, limit);
-  res.json(messages.reverse());
+  res.json(messages);
   console.log('GET message: ', messages);
 });
 
