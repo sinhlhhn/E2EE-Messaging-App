@@ -10,6 +10,11 @@ import SwiftUI
 @Observable
 class MessageListViewModel {
     private let cache = NSCache<NSString, UIImage>()
+    var messages: [MessageGroup]
+    
+    init(messages: [MessageGroup]) {
+        self.messages = messages
+    }
         
     func image(forKey key: String) -> UIImage? {
         cache.object(forKey: key as NSString)

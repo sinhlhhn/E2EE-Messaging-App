@@ -18,11 +18,11 @@ struct ChatView: View {
     @Bindable var viewModel: ChatViewModel
     @FocusState private var isFocused: Bool
     
-    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, Binding<[MessageGroup]>, FocusState<Bool>.Binding) -> MessageListView
+    private let didCreateMessageListView: (Binding<Bool>, Binding<Int?>, [MessageGroup], FocusState<Bool>.Binding) -> MessageListView
     
     init(
         viewModel: ChatViewModel,
-        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, Binding<[MessageGroup]>, FocusState<Bool>.Binding) -> MessageListView
+        didCreateMessageListView: @escaping (Binding<Bool>, Binding<Int?>, [MessageGroup], FocusState<Bool>.Binding) -> MessageListView
     ) {
         self.viewModel = viewModel
         self.didCreateMessageListView = didCreateMessageListView
@@ -35,7 +35,7 @@ struct ChatView: View {
             didCreateMessageListView(
                 $viewModel.reachedTop,
                 $viewModel.lastMessageId,
-                $viewModel.messages,
+                viewModel.messages,
                 $isFocused
             )
             .onTapGesture {

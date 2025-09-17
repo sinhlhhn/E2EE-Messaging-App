@@ -10,10 +10,9 @@ import SwiftUI
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?
-    @Binding var messages: [MessageGroup]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
-    @State private var viewModel: MessageListViewModel = .init()
+    @Bindable private var viewModel: MessageListViewModel
     @State private var caches: [UUID?: [UIImage]] = [:]
     
     // Image
@@ -23,13 +22,35 @@ struct MessageListView: View {
     @State private var fullScreenGroupImage: [UIImage] = []
     @Namespace private var nsAnimation
     
-    var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
-    var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
-    var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
-    var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
-    var didDisplayDocument: ((URL) -> Void)
+    private var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
+    private var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
+    private var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
+    private var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
+    private var didDisplayDocument: ((URL) -> Void)
     
-    private func createGroupMessageView(_ group: MessageGroup) -> some View {
+    init(
+        reachedTop: Binding<Bool>,
+        previousId: Binding<Int?>,
+        isFocused: FocusState<Bool>.Binding,
+        viewModel: MessageListViewModel,
+        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel,
+        didCreateMessageImageViewModel: @escaping (ImageMessage) -> MessageImageViewModel,
+        didCreateGroupMessageImageViewModel: @escaping ([ImageMessage]) -> GroupMessageImageViewModel,
+        didCreateMessageVideoViewModel: @escaping (VideoMessage) -> MessageVideoViewModel,
+        didDisplayDocument: @escaping (URL) -> Void
+    ) {
+        self._reachedTop = reachedTop
+        self._previousId = previousId
+        self._isFocused = isFocused
+        self.viewModel = viewModel
+        self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
+        self.didCreateMessageImageViewModel = didCreateMessageImageViewModel
+        self.didCreateGroupMessageImageViewModel = didCreateGroupMessageImageViewModel
+        self.didCreateMessageVideoViewModel = didCreateMessageVideoViewModel
+        self.didDisplayDocument = didDisplayDocument
+    }
+    
+    private func createSingleGroupMessageView(_ group: MessageGroup) -> some View {
         ForEach(group.messages) { message in
             HStack {
                 if message.isFromCurrentUser {
@@ -38,61 +59,56 @@ struct MessageListView: View {
                 createMessageView(message)
                     .flippedUpsideDown()
                     .id(message.id)
-                    .onAppear {
-                        print("========= \(message.remoteId)")
-                        if message.remoteId == group.messages.first?.remoteId {
-//                            reachedTop = true
-                        }
-                    }
             }
         }
     }
     
-    private func createGroupMessageView2(_ group: MessageGroup) -> some View {
+    @ViewBuilder
+    private func createMultipleGroupMessageView(_ group: MessageGroup) -> some View {
         let images: [ImageMessage] = group.messages.compactMap {
             if case let .image(image) = $0.type {
                 return ImageMessage(path: image.path, originalName: image.originalName)
             }
             return nil
         }
-        
-        return HStack {
-            if group.isFromCurrentUser == true {
-                Spacer()
+        if let message = group.messages.first {
+            HStack {
+                if group.isFromCurrentUser == true {
+                    Spacer()
+                }
+                
+                createGroupImageMessage(data: images, message: message)
+                    .flippedUpsideDown()
+                    .id(viewModel.messages.first?.id)
             }
-            
-            createGroupImageMessage(data: images, message: group.messages[0])
-                .flippedUpsideDown()
-                .id(messages.first?.id)
-//                .onAppear {
-//                    print("========= \(messages.first?.remoteId)")
-//                    if messages.first?.remoteId == messages.first?.remoteId {
-//                        //                            reachedTop = true
-//                    }
-//                }
         }
     }
     
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
-                if reachedTop {
-                    ProgressView()
-                }
                 List {
-                    ForEach(messages, id: \.id) { group in
+                    ForEach(viewModel.messages, id: \.id) { group in
                         if group.messages.count == 1 {
-                            createGroupMessageView(group)
+                            createSingleGroupMessageView(group)
                         } else {
-                            createGroupMessageView2(group)
+                            createMultipleGroupMessageView(group)
                         }
                     }
                     .listRowSeparator(.hidden)
+                    if viewModel.messages.last?.lastestMessageId != 1 {
+                        ListProgressView()
+                            .flippedUpsideDown()
+                            .listRowSeparator(.hidden)
+                            .onAppear {
+                                reachedTop = true
+                            }
+                    }
                 }
                 .flippedUpsideDown()
                 .listStyle(.plain)
                 .scrollIndicators(.hidden)
-                .onChange(of: messages, { _, _ in
+                .onChange(of: viewModel.messages, { _, _ in
                     //TODO: If the user is scrolling up, do not scroll to the bottom.
                     scrollToBottom(proxy)
                 })
@@ -249,17 +265,3 @@ struct MessageListView: View {
 //    @Previewable @FocusState var isFocused: Bool
 //    MessageListView(reachedTop: Binding.constant(false), previousId: Binding.constant(0), messages: Binding.constant(mockMessages), isFocused: $isFocused)
 //}
-
-struct FlippedUpsideDown: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .rotationEffect(.radians(Double.pi))
-            .scaleEffect(x: -1, y: 1, anchor: .center)
-    }
-}
-
-extension View {
-    func flippedUpsideDown() -> some View {
-        modifier(FlippedUpsideDown())
-    }
-}

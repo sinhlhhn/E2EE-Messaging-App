@@ -17,6 +17,10 @@ struct MessageGroup: Identifiable, Equatable {
     let isFromCurrentUser: Bool
     let createdAt: Double
     let messages: [Message]  // all messages in this group
+    
+    var lastestMessageId: Int? {
+        messages.last?.remoteId
+    }
 }
 
 @Observable
@@ -37,6 +41,7 @@ class ChatViewModel {
     private var connectCancellable: AnyCancellable?
     private var fetchMessageCancellable: AnyCancellable?
     private let passthroughSubject = PassthroughSubject<FetchMessageData, Never>()
+    var isLoading = false
     
     private let didTapBack: () -> Void
     
@@ -268,10 +273,20 @@ class ChatViewModel {
     }
     
     func loadFirstMessage() {
+        isLoading = true
         passthroughSubject.send(FetchMessageData(sender: sender.username, receiver: receiver, firstLoad: true))
     }
     
     func loadMoreMessages() {
+        // Ignore when there are no more message to load.
+        if firstMessageId == 1 {
+            return
+        }
+        // Ignore if a request is already running.
+        if isLoading {
+            return
+        }
+        isLoading = true
         passthroughSubject.send(FetchMessageData(sender: sender.username, receiver: receiver, before: firstMessageId, limit: 10, firstLoad: false))
     }
     
@@ -294,15 +309,13 @@ class ChatViewModel {
                 }
             } receiveValue: { [weak self] messages in
                 guard let self else { return }
-                self.messages = messages
+                self.messages.append(contentsOf: messages)
                 //TODO: -Auto scroll to the latest message
-                if let firstMessageId = messages.first?.messages.first?.remoteId {
+                if let firstMessageId = messages.last?.messages.first?.remoteId {
                     self.firstMessageId = firstMessageId
                 }
-                if let lastMessageId = messages.last?.messages.last?.remoteId {
-                    self.lastMessageId = lastMessageId
-                }
                 self.reachedTop = false
+                self.isLoading = false
             }
     }
     
