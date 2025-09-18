@@ -15,10 +15,18 @@ struct MessageImageView: View {
     private let nsAnimation: Namespace.ID
     
     private let didTapImage: (UIImage) -> Void
+    private let didCompleteDisplayImage: (UIImage) -> Void
     
-    init(geoEffectId: String, nsAnimation: Namespace.ID, viewModel: MessageImageViewModel, didTapImage: @escaping (UIImage) -> Void) {
+    init(
+        geoEffectId: String,
+        nsAnimation: Namespace.ID,
+        viewModel: MessageImageViewModel,
+        didTapImage: @escaping (UIImage) -> Void,
+        didCompleteDisplayImage: @escaping (UIImage) -> Void
+    ) {
         self.viewModel = viewModel
         self.didTapImage = didTapImage
+        self.didCompleteDisplayImage = didCompleteDisplayImage
         self.nsAnimation = nsAnimation
         self.geoEffectId = geoEffectId
     }
@@ -35,9 +43,12 @@ struct MessageImageView: View {
                     .frame(width: 200, height: 400)
             case .completed(let image):
                 CachedMessageImageView(image: image, geoEffectId: geoEffectId, nsAnimation: nsAnimation, didTapImage: didTapImage)
+                    .onAppear {
+                        didCompleteDisplayImage(image)
+                    }
             }
         }.task {
-            viewModel.getData()
+            await viewModel.getData()
         }
         
     }

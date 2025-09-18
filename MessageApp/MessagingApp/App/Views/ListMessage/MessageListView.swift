@@ -191,6 +191,8 @@ struct MessageListView: View {
         } else {
             FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
                 selectGroupImage(images, message: message)
+            } didCompleteDisplayImage: { images in
+                caches[message.groupId] = images
             }
             .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
             .frame(width: 150, height: 150)
@@ -201,7 +203,6 @@ struct MessageListView: View {
         withAnimation {
             self.selectedGroupId = message.id.uuidString
             self.fullScreenGroupImage = images
-            self.caches[message.groupId] = images
         }
     }
     
@@ -242,8 +243,9 @@ struct MessageListView: View {
     @ViewBuilder
     private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
         MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
-            viewModel.insertImage(image, forKey: id.uuidString)
             selectImage(id, image: image)
+        } didCompleteDisplayImage: { image in
+            viewModel.insertImage(image, forKey: id.uuidString)
         }
     }
     

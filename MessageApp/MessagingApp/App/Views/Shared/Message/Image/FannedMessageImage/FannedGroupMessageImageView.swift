@@ -11,10 +11,16 @@ struct FannedGroupMessageImageView: View {
     @State private var viewModel: GroupMessageImageViewModel
     
     private let didTapImage: ([UIImage]) -> Void
+    private let didCompleteDisplayImage: ([UIImage]) -> Void
     
-    init(viewModel: GroupMessageImageViewModel, didTapImage: @escaping ([UIImage]) -> Void) {
+    init(
+        viewModel: GroupMessageImageViewModel,
+        didTapImage: @escaping ([UIImage]) -> Void,
+        didCompleteDisplayImage: @escaping ([UIImage]) -> Void
+    ) {
         self.viewModel = viewModel
         self.didTapImage = didTapImage
+        self.didCompleteDisplayImage = didCompleteDisplayImage
     }
     
     var body: some View {
@@ -24,13 +30,16 @@ struct FannedGroupMessageImageView: View {
                 LoadingView()
             case .completed(let images):
                 createImageView(images)
+                    .onAppear {
+                        didCompleteDisplayImage(images)
+                    }
                     .highPriorityGesture(
                         TapGesture().onEnded {
                             didTapImage(images)
                         })
             }
         }.task {
-            viewModel.getData()
+            await viewModel.getData()
         }
         
     }
