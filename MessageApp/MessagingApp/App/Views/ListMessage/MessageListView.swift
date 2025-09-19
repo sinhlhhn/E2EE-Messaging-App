@@ -12,7 +12,10 @@ struct MessageListView: View {
     @Binding var previousId: Int?
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
-    @Bindable private var viewModel: MessageListViewModel
+    // if we use @State here, we cannot connect the `messages` between `MessageListViewModel` and `ChatViewModel`
+    // if we use the @Bindable, the MessageListViewModel will be reloaded each time the MessageListView reloads. So we cannot create internal mutable data inside `MessageListViewModel` and use it because its states is also be reloaded to init state.
+    @State private var viewModel: MessageListViewModel
+    @Binding var messages: [MessageGroup]
     @State private var caches: [UUID?: [UIImage]] = [:]
     
     // Image
@@ -33,6 +36,7 @@ struct MessageListView: View {
         previousId: Binding<Int?>,
         isFocused: FocusState<Bool>.Binding,
         viewModel: MessageListViewModel,
+        messages: Binding<[MessageGroup]>,
         didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel,
         didCreateMessageImageViewModel: @escaping (ImageMessage) -> MessageImageViewModel,
         didCreateGroupMessageImageViewModel: @escaping ([ImageMessage]) -> GroupMessageImageViewModel,
@@ -42,6 +46,7 @@ struct MessageListView: View {
         self._reachedTop = reachedTop
         self._previousId = previousId
         self._isFocused = isFocused
+        self._messages = messages
         self.viewModel = viewModel
         self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
         self.didCreateMessageImageViewModel = didCreateMessageImageViewModel
@@ -79,7 +84,7 @@ struct MessageListView: View {
                 
                 createGroupImageMessage(data: images, message: message)
                     .flippedUpsideDown()
-                    .id(viewModel.messages.first?.id)
+                    .id(messages.first?.id)
             }
         }
     }
@@ -88,7 +93,7 @@ struct MessageListView: View {
         ZStack {
             ScrollViewReader { proxy in
                 List {
-                    ForEach(viewModel.messages, id: \.id) { group in
+                    ForEach(messages, id: \.id) { group in
                         if group.messages.count == 1 {
                             createSingleGroupMessageView(group)
                         } else {
@@ -96,7 +101,9 @@ struct MessageListView: View {
                         }
                     }
                     .listRowSeparator(.hidden)
-                    if viewModel.messages.last?.lastestMessageId != 1 {
+                    
+                    //TODO: move logic to other place
+                    if messages.last?.lastestMessageId != 1 && !messages.isEmpty {
                         ListProgressView()
                             .flippedUpsideDown()
                             .listRowSeparator(.hidden)
@@ -108,7 +115,7 @@ struct MessageListView: View {
                 .flippedUpsideDown()
                 .listStyle(.plain)
                 .scrollIndicators(.hidden)
-                .onChange(of: viewModel.messages, { _, _ in
+                .onChange(of: messages, { _, _ in
                     //TODO: If the user is scrolling up, do not scroll to the bottom.
                     scrollToBottom(proxy)
                 })
@@ -192,6 +199,7 @@ struct MessageListView: View {
             FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
                 selectGroupImage(images, message: message)
             } didCompleteDisplayImage: { images in
+                debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
                 caches[message.groupId] = images
             }
             .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)

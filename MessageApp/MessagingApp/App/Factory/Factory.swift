@@ -55,107 +55,100 @@ final class Factory {
     //MARK: -UnauthenticatedClient
     private lazy var unauthenticatedNetwork: UnauthenticatedNetworking = UnauthenticatedNetwork(network: fetchClient)
     
-    
-    private var conversationViewModel: ConversationViewModel?
-    
     private lazy var keyStore = UserDefaultsKeyStoreService()
-    private var chatViewModel: ChatViewModel?
-    private var messageAttachmentViewModel: MessageAttachmentViewModel?
+    
+    lazy var secureKeyService = P256SecureKeyService()
+    lazy var restoreKey = RemoteRestoreKeyModule()
+    lazy var authentication = PasswordAuthenticationService(unauthenticatedNetwork: unauthenticatedNetwork, network: authenticatedNetwork, secureKey: secureKeyService, keyStore: keyStore, restoreKey: restoreKey)
+    
+    lazy var userService = RemoteUserService(network: authenticatedNetwork)
+    lazy var logOut = RemoteLogOutUseCase(network: authenticatedNetwork, keyStore: keyStore)
     
     
-    private var loginViewModel: LoginViewModel?
-    private var profileViewModel: ProfileViewModel?
+    lazy var encryptService = AESEncryptService()
+    lazy var decryptService = AESDecryption()
+    lazy var messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: authenticatedNetwork)
+    lazy var socketService = LocalSocketService(sessionDelegate: sessionDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
 }
 
 // Root
 extension Factory {
     func createRootView(didLogin: @escaping () -> Void, didGoToConversation: @escaping (User) -> Void) -> some View {
         let viewModel = SplashViewModel(tokenProvider: tokenProvider, keyStore: keyStore, needAuth: didLogin, didAuth: didGoToConversation)
-        
+//        print("❌ ", Unmanaged.passUnretained(viewModel).toOpaque())
         return SplashView(viewModel: viewModel)
-            .onAppear {
-                print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
-                viewModel.checkAuthentication()
-            }
     }
     
     func createLogIn(didLogin: @escaping (User) -> Void) -> some View {
-        if loginViewModel == nil {
-            let secureKeyService = P256SecureKeyService()
-            let restoreKey = RemoteRestoreKeyModule()
-            let authentication = PasswordAuthenticationService(unauthenticatedNetwork: unauthenticatedNetwork, network: authenticatedNetwork, secureKey: secureKeyService, keyStore: keyStore, restoreKey: restoreKey)
-            loginViewModel = LoginViewModel(service: authentication, didLogin: didLogin)
-        }
-        guard let loginViewModel = loginViewModel else {
-            fatalError("loginViewModel need to be set before use ")
-        }
+        let loginViewModel = LoginViewModel(service: authentication, didLogin: didLogin)
         
         return LogInView(viewModel: loginViewModel)
     }
     
     func createProfile() -> some View {
-        if profileViewModel == nil {
-            let profileService = ProfileService(network: authenticatedNetwork)
-            profileViewModel = ProfileViewModel(service: profileService)
-        }
-        guard let profileViewModel = profileViewModel else {
-            fatalError("profileViewModel need to be set before use ")
-        }
-        
-        return ProfileView(viewModel: profileViewModel)
+        return EmptyView()
+//        if profileViewModel == nil {
+//            let profileService = ProfileService(network: authenticatedNetwork)
+//            profileViewModel = ProfileViewModel(service: profileService)
+//        }
+//        guard let profileViewModel = profileViewModel else {
+//            fatalError("profileViewModel need to be set before use ")
+//        }
+//        
+//        return ProfileView(viewModel: profileViewModel)
     }
     
     func createConversation(sender: User, didTapItem: @escaping (User, String) -> Void, didTapLogOut: @escaping () -> Void) -> some View {
-        if conversationViewModel == nil {
-            let userService = RemoteUserService(network: authenticatedNetwork)
-            let logOut = RemoteLogOutUseCase(network: authenticatedNetwork, keyStore: keyStore)
-            conversationViewModel = ConversationViewModel(sender: sender, logOutUseCase: logOut, service: userService, didTapItem: didTapItem, didTapLogOut: didTapLogOut)
-        }
+        let conversationViewModel = ConversationViewModel(
+            sender: sender,
+            logOutUseCase: logOut,
+            service: userService,
+            didTapItem: didTapItem,
+            didTapLogOut: didTapLogOut
+        )
         
-        guard let conversationViewModel = conversationViewModel else {
-            fatalError("conversationViewModel need to be set before use ")
-        }
-        
-        conversationViewModel.sender = sender
-        
+        print("❌ ", Unmanaged.passUnretained(conversationViewModel).toOpaque())
         return ConversationView(viewModel: conversationViewModel)
     }
     
     func createChat(sender: User, receiver: String, didTapBack: @escaping () -> Void, didDisplayDocument: @escaping (URL) -> Void) -> some View {
-        if chatViewModel == nil {
-            let encryptService = AESEncryptService()
-            let decryptService = AESDecryption()
-            let secureKeyService = P256SecureKeyService()
-            let messageService = RemoteMessageService(secureKey: secureKeyService, keyStore: keyStore, decryptService: decryptService, network: authenticatedNetwork)
-            let socketService = LocalSocketService(sessionDelegate: sessionDelegate, encryptService: encryptService, decryptService: decryptService, keyStore: keyStore)
-            chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, uploadService: authenticatedNetwork, messageService: messageService, didTapBack: didTapBack)
-        }
-        
-        guard let chatViewModel = chatViewModel else {
-            fatalError("chatViewModel need to be set before use ")
-        }
+        let chatViewModel = ChatViewModel(sender: sender, receiver: receiver, service: socketService, uploadService: authenticatedNetwork, messageService: messageService, didTapBack: didTapBack)
         
         chatViewModel.sender = sender
         chatViewModel.receiver = receiver
         
         return ChatView(
-            viewModel: chatViewModel) { [unowned self] reachedTop, lastMessageId, messages, isFocused in
-                createChatView(reachedTop: reachedTop, lastMessageId: lastMessageId, messages: messages, isFocused: isFocused, didDisplayDocument: didDisplayDocument)
+            viewModel: chatViewModel) { [weak self] reachedTop, lastMessageId, messages, isFocused in
+                guard let self else { fatalError() }
+                return createChatView(reachedTop: reachedTop, lastMessageId: lastMessageId, messages: messages, isFocused: isFocused, didDisplayDocument: didDisplayDocument)
             }
     }
     
-    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: [MessageGroup], isFocused: FocusState<Bool>.Binding, didDisplayDocument: @escaping (URL) -> Void) -> MessageListView {
+    private func createChatView(reachedTop: Binding<Bool>, lastMessageId: Binding<Int?>, messages: Binding<[MessageGroup]>, isFocused: FocusState<Bool>.Binding, didDisplayDocument: @escaping (URL) -> Void) -> MessageListView {
         MessageListView(
             reachedTop: reachedTop,
             previousId: lastMessageId,
             isFocused: isFocused,
-            viewModel: MessageListViewModel(messages: messages),
-            didCreateMessageAttachmentViewModel: createAttachmentMessageViewModel,
-            didCreateMessageImageViewModel: createMessageImageViewModel,
-            didCreateGroupMessageImageViewModel: createGroupMessageImageViewModel,
-            didCreateMessageVideoViewModel: createMessageVideoViewModel,
+            viewModel: createMessageListViewModel(),
+            messages: messages,
+            didCreateMessageAttachmentViewModel: { [unowned self] attachment in
+                createAttachmentMessageViewModel(attachmentMessage: attachment)
+            },
+            didCreateMessageImageViewModel: { [unowned self] image in
+                createMessageImageViewModel(message: image)
+            },
+            didCreateGroupMessageImageViewModel: { [unowned self] groupImage in
+                createGroupMessageImageViewModel(groupImage)
+            },
+            didCreateMessageVideoViewModel: { [unowned self] video in
+                createMessageVideoViewModel(message: video)
+            },
             didDisplayDocument: didDisplayDocument
         )
+    }
+    
+    private func createMessageListViewModel() -> MessageListViewModel {
+        MessageListViewModel()
     }
     
     private func createGroupMessageImageViewModel(_ messages: [ImageMessage]) -> GroupMessageImageViewModel {

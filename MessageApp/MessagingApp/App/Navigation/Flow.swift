@@ -13,9 +13,9 @@ enum ConversationDestination: Hashable {
     case chat(sender: User, receiver: String)
 }
 
-class Flow: ObservableObject {
-    @Published var path: NavigationPath = .init()
-    @Published var type: NavigationType = .root("")
+@Observable
+class Flow {
+    var path: NavigationPath = .init()
     
     enum NavigationType {
         case pushTo(any Hashable)

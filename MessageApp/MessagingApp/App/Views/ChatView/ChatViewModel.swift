@@ -292,12 +292,14 @@ class ChatViewModel {
     
     private func fetchMessage() {
         fetchMessageCancellable = passthroughSubject
-            .flatMap(maxPublishers: .max(1)) { data in
-                self.messageService.fetchMessages(data: data)
+            .flatMap(maxPublishers: .max(1)) { [weak self] data in
+                guard let self else { return Empty<[Message], Never>().eraseToAnyPublisher() }
+                return self.messageService.fetchMessages(data: data)
                     .replaceError(with: [])
+                    .eraseToAnyPublisher()
             }
-            .map { messages -> [MessageGroup] in
-                self.groupMessages(messages)
+            .compactMap { [weak self] messages -> [MessageGroup]? in
+                self?.groupMessages(messages)
             }
             .receive(on: DispatchQueue.main)
             .sink { completion in

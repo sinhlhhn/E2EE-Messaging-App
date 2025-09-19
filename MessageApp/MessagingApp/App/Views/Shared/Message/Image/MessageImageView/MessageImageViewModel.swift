@@ -58,7 +58,7 @@ class MessageImageViewModel {
         let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
-            debugPrint("✅ load data from local")
+            debugPrint("✅ load image data from local")
             guard let image = await reader.image(contentsOf: destinationURL) else {
                 debugPrint("❌ Cannot load image")
                 return

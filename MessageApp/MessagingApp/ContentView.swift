@@ -14,10 +14,10 @@ struct DocumentData: Identifiable {
 
 struct ContentView: View {
     
-    @StateObject private var flow = Flow()
+    @State private var flow = Flow()
     @State private var documentURL: DocumentData?
-    
     private let factory = Factory()
+    
     
     var body: some View {
         NavigationStack(path: $flow.path) {

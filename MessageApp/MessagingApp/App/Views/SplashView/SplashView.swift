@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct SplashView: View {
-    let viewModel: SplashViewModel
+    @State private var viewModel: SplashViewModel
     
     init(viewModel: SplashViewModel) {
         self.viewModel = viewModel
@@ -16,5 +16,9 @@ struct SplashView: View {
     
     var body: some View {
         Text("Splash screen")
+            .onAppear {
+                print(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask))
+                viewModel.checkAuthentication()
+            }
     }
 }
