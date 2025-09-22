@@ -17,6 +17,16 @@ class MessageImageViewModel {
     
     private(set) var viewState: ViewState = .loading
     
+    @ObservationIgnored
+    private lazy var reader = createImageReader()
+    
+    private func createImageReader() -> UIImageReader {
+        var configuration = UIImageReader.Configuration()
+        configuration.preparesImagesForDisplay = true
+        configuration.preferredThumbnailSize = CGSize(width: 10000, height: 10000)
+        return UIImageReader(configuration: configuration)
+    }
+    
     private let message: ImageMessage
     private var url: URL {
         message.path
@@ -34,7 +44,7 @@ class MessageImageViewModel {
         self.downloadNetwork = downloadNetwork
     }
     
-    func getData() {
+    func getData() async {
         let fileManager = FileManager.default
         guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             debugPrint("❌ cannot get document directory ")
@@ -48,8 +58,8 @@ class MessageImageViewModel {
         let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
-            debugPrint("✅ load data from local")
-            guard let image = UIImage(contentsOfFile: destinationURL.path) else {
+            debugPrint("✅ load image data from local")
+            guard let image = await reader.image(contentsOf: destinationURL) else {
                 debugPrint("❌ Cannot load image")
                 return
             }

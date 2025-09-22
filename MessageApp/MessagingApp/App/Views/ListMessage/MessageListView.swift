@@ -10,10 +10,12 @@ import SwiftUI
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?
-    @Binding var messages: [Message]
     @FocusState<Bool>.Binding var isFocused: Bool
     @State private var isScrollUp: Bool = false
-    @State private var viewModel: MessageListViewModel = .init()
+    // if we use @State here, we cannot connect the `messages` between `MessageListViewModel` and `ChatViewModel`
+    // if we use the @Bindable, the MessageListViewModel will be reloaded each time the MessageListView reloads. So we cannot create internal mutable data inside `MessageListViewModel` and use it because its states is also be reloaded to init state.
+    @State private var viewModel: MessageListViewModel
+    @Binding var messages: [MessageGroup]
     @State private var caches: [UUID?: [UIImage]] = [:]
     
     // Image
@@ -23,32 +25,94 @@ struct MessageListView: View {
     @State private var fullScreenGroupImage: [UIImage] = []
     @Namespace private var nsAnimation
     
-    var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
-    var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
-    var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
-    var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
-    var didDisplayDocument: ((URL) -> Void)
+    private var didCreateMessageAttachmentViewModel: ((AttachmentMessage) -> MessageAttachmentViewModel)
+    private var didCreateMessageImageViewModel: ((ImageMessage) -> MessageImageViewModel)
+    private var didCreateGroupMessageImageViewModel: (([ImageMessage]) -> GroupMessageImageViewModel)
+    private var didCreateMessageVideoViewModel: ((VideoMessage) -> MessageVideoViewModel)
+    private var didDisplayDocument: ((URL) -> Void)
+    
+    init(
+        reachedTop: Binding<Bool>,
+        previousId: Binding<Int?>,
+        isFocused: FocusState<Bool>.Binding,
+        viewModel: MessageListViewModel,
+        messages: Binding<[MessageGroup]>,
+        didCreateMessageAttachmentViewModel: @escaping (AttachmentMessage) -> MessageAttachmentViewModel,
+        didCreateMessageImageViewModel: @escaping (ImageMessage) -> MessageImageViewModel,
+        didCreateGroupMessageImageViewModel: @escaping ([ImageMessage]) -> GroupMessageImageViewModel,
+        didCreateMessageVideoViewModel: @escaping (VideoMessage) -> MessageVideoViewModel,
+        didDisplayDocument: @escaping (URL) -> Void
+    ) {
+        self._reachedTop = reachedTop
+        self._previousId = previousId
+        self._isFocused = isFocused
+        self._messages = messages
+        self.viewModel = viewModel
+        self.didCreateMessageAttachmentViewModel = didCreateMessageAttachmentViewModel
+        self.didCreateMessageImageViewModel = didCreateMessageImageViewModel
+        self.didCreateGroupMessageImageViewModel = didCreateGroupMessageImageViewModel
+        self.didCreateMessageVideoViewModel = didCreateMessageVideoViewModel
+        self.didDisplayDocument = didDisplayDocument
+    }
+    
+    private func createSingleGroupMessageView(_ group: MessageGroup) -> some View {
+        ForEach(group.messages) { message in
+            HStack {
+                if message.isFromCurrentUser {
+                    Spacer()
+                }
+                createMessageView(message)
+                    .flippedUpsideDown()
+                    .id(message.id)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func createMultipleGroupMessageView(_ group: MessageGroup) -> some View {
+        let images: [ImageMessage] = group.messages.compactMap {
+            if case let .image(image) = $0.type {
+                return ImageMessage(path: image.path, originalName: image.originalName)
+            }
+            return nil
+        }
+        if let message = group.messages.first {
+            HStack {
+                if group.isFromCurrentUser == true {
+                    Spacer()
+                }
+                
+                createGroupImageMessage(data: images, message: message)
+                    .flippedUpsideDown()
+                    .id(messages.first?.id)
+            }
+        }
+    }
     
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
-                if reachedTop {
-                    ProgressView()
-                }
-                List(messages, id: \.self)  { message in
-                    HStack {
-                        if message.isFromCurrentUser {
-                            Spacer()
+                List {
+                    ForEach(messages, id: \.id) { group in
+                        if group.messages.count == 1 {
+                            createSingleGroupMessageView(group)
+                        } else {
+                            createMultipleGroupMessageView(group)
                         }
-                        createMessageView(message)
-//                            .onAppear {
-//                                if message.messageId == messages.first?.messageId, isScrollUp {
-//                                    reachedTop = true
-//                                }
-//                            }
                     }
                     .listRowSeparator(.hidden)
+                    
+                    //TODO: move logic to other place
+                    if messages.last?.lastestMessageId != 1 && !messages.isEmpty {
+                        ListProgressView()
+                            .flippedUpsideDown()
+                            .listRowSeparator(.hidden)
+                            .onAppear {
+                                reachedTop = true
+                            }
+                    }
                 }
+                .flippedUpsideDown()
                 .listStyle(.plain)
                 .scrollIndicators(.hidden)
                 .onChange(of: messages, { _, _ in
@@ -107,12 +171,8 @@ struct MessageListView: View {
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
                 .clipShape(.rect(cornerRadius: 10))
                 .frame(width: 200, height: 300)
-        case .image(let images):
-            if images.count == 1 {
-                createSingleImageMessage(data: images[0], message: message)
-            } else {
-                createGroupImageMessage(data: images, message: message)
-            }
+        case .image(let image):
+            createSingleImageMessage(data: image, message: message)
         case .attachment(let data):
             MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
                 didDisplayDocument(url)
@@ -138,6 +198,9 @@ struct MessageListView: View {
         } else {
             FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
                 selectGroupImage(images, message: message)
+            } didCompleteDisplayImage: { images in
+                debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
+                caches[message.groupId] = images
             }
             .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
             .frame(width: 150, height: 150)
@@ -148,7 +211,6 @@ struct MessageListView: View {
         withAnimation {
             self.selectedGroupId = message.id.uuidString
             self.fullScreenGroupImage = images
-            self.caches[message.groupId] = images
         }
     }
     
@@ -189,8 +251,9 @@ struct MessageListView: View {
     @ViewBuilder
     private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
         MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
-            viewModel.insertImage(image, forKey: id.uuidString)
             selectImage(id, image: image)
+        } didCompleteDisplayImage: { image in
+            viewModel.insertImage(image, forKey: id.uuidString)
         }
     }
     

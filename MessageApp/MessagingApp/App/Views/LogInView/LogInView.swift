@@ -11,7 +11,7 @@ struct LogInView: View {
     @State private var email: String = "A"
     @State private var password: String = "A"
     
-    @Bindable var viewModel: LoginViewModel
+    @State var viewModel: LoginViewModel
     
     var body: some View {
         VStack {

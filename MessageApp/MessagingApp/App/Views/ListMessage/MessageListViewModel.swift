@@ -16,6 +16,8 @@ class MessageListViewModel {
     }
     
     func insertImage(_ image: UIImage, forKey key: String) {
+        debugPrint("[Cache] Insert image for key: \(key)")
         cache.setObject(image, forKey: key as NSString)
+        
     }
 }

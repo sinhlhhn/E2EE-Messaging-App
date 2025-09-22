@@ -44,7 +44,7 @@ class MessageVideoViewModel {
         let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
         
         if FileManager.default.fileExists(atPath: destinationURL.path) {
-            debugPrint("✅ load data from local")
+            debugPrint("✅ load video data from local")
             viewState = .completed(destinationURL)
             return
         }

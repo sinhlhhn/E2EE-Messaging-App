@@ -18,6 +18,16 @@ class GroupMessageImageViewModel {
     
     private(set) var viewState: ViewState = .loading
     
+    @ObservationIgnored
+    private lazy var reader = createImageReader()
+    
+    private func createImageReader() -> UIImageReader {
+        var configuration = UIImageReader.Configuration()
+        configuration.preparesImagesForDisplay = true
+        configuration.preferredThumbnailSize = CGSize(width: 10000, height: 10000)
+        return UIImageReader(configuration: configuration)
+    }
+    
     private let message: [ImageMessage]
     private var urls: [URL] {
         message.map { $0.path }
@@ -35,7 +45,7 @@ class GroupMessageImageViewModel {
         self.downloadNetwork = downloadNetwork
     }
     
-    func getData() {
+    func getData() async {
         let fileManager = FileManager.default
         guard let document = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first else {
             debugPrint("❌ cannot get document directory ")
@@ -54,12 +64,24 @@ class GroupMessageImageViewModel {
         for url in urls {
             let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
             if fileManager.fileExists(atPath: destinationURL.path),
-               let image = UIImage(contentsOfFile: destinationURL.path) {
-                localImages.append(image)
+               let optimisedImage = await reader.image(contentsOf: destinationURL) {
+                localImages.append(optimisedImage)
             } else {
                 remoteURLs.append(url)
             }
         }
+        
+//        for url in urls {
+//            let destinationURL = downloadDirectory.appending(path: url.lastPathComponent)
+//            if fileManager.fileExists(atPath: destinationURL.path),
+//               let image = UIImage(contentsOfFile: destinationURL.path),
+////               let optimisedImage = await image.prepareThumbnailAsync(targetSize: .init(width: 200, height: 200)) {
+//               let optimisedImage = await image.prepareForDisplayAsync() {
+//                localImages.append(optimisedImage)
+//            } else {
+//                remoteURLs.append(url)
+//            }
+//        }
         
         if remoteURLs.isEmpty {
             // all loaded locally
@@ -117,6 +139,7 @@ class GroupMessageImageViewModel {
         
         Publishers.MergeMany(publishers)
             .collect() // gather all results into [UIImage]
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 if case let .failure(error) = completion {
                     debugPrint("❌ download failed: \(error.localizedDescription)")
@@ -127,5 +150,24 @@ class GroupMessageImageViewModel {
                 self.viewState = .completed(allImages)
             }
             .store(in: &cancellables)
+    }
+}
+
+
+extension UIImage {
+    func prepareForDisplayAsync() async -> UIImage? {
+        return await withCheckedContinuation { continuation in
+            self.prepareForDisplay { image in
+                continuation.resume(returning: image)
+            }
+        }
+    }
+    
+    func prepareThumbnailAsync(targetSize: CGSize) async -> UIImage? {
+        return await withCheckedContinuation { continuation in
+            self.prepareThumbnail(of: targetSize) { image in
+                continuation.resume(returning: image)
+            }
+        }
     }
 }

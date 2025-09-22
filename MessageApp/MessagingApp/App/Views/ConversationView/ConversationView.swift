@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ConversationView: View {
-    @Bindable var viewModel: ConversationViewModel
+    @State var viewModel: ConversationViewModel
     
     init(viewModel: ConversationViewModel) {
         self.viewModel = viewModel

@@ -162,18 +162,18 @@ final class AuthenticatedNetwork: NetworkModule {
                 let createdDate = $0.createdAt
                 guard let mediaType = MediaType(rawValue: $0.mediaType) else {
                     debugPrint("❌ cannot parse mediaType: \(String(describing: $0.mediaType))")
-                    return RemoteMessage(type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
+                    return RemoteMessage(id: $0.id, type: .text(.init(content: "")), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 }
                 switch mediaType {
                 case .text:
-                    return RemoteMessage(type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
+                    return RemoteMessage(id: $0.id, type: .text(.init(content: $0.text!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 case .attachment:
-                    return RemoteMessage(type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
+                    return RemoteMessage(id: $0.id, type: .attachment(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 case .image:
                     let groupId: UUID? = $0.groupId == nil ? nil : UUID(uuidString: $0.groupId!)
-                    return RemoteMessage(type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: groupId, createdDate: createdDate)
+                    return RemoteMessage(id: $0.id, type: .image(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: groupId, createdDate: createdDate)
                 case .video:
-                    return RemoteMessage(type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
+                    return RemoteMessage(id: $0.id, type: .video(.init(path: URL(string: $0.mediaUrl!)!, originalName: $0.originalName!)), isFromCurrentUser: $0.sender == sender, groupId: nil, createdDate: createdDate)
                 }
             }}
             .eraseToAnyPublisher()
