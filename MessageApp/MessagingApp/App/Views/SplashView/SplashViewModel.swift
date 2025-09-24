@@ -10,11 +10,17 @@ import Combine
 
 @Observable
 final class SplashViewModel {
+    @ObservationIgnored
     private let tokenProvider: TokenProvider
+    @ObservationIgnored
     private let keyStore: KeyStoreModule
-    let needAuth: () -> Void
-    let didAuth: (User) -> Void
     
+    @ObservationIgnored
+    private let needAuth: () -> Void
+    @ObservationIgnored
+    private let didAuth: (User) -> Void
+    
+    @ObservationIgnored
     private var cancellables: Set<AnyCancellable> = []
     
     init(tokenProvider: TokenProvider, keyStore: KeyStoreModule, needAuth: @escaping () -> Void, didAuth: @escaping (User) -> Void) {
@@ -32,7 +38,8 @@ final class SplashViewModel {
                 switch authenticationState {
                 case .loggedOut:
                     self?.handleLogout()
-                case .loggedIn(let user): self?.didAuth(user)
+                case .loggedIn(let user):
+                    self?.didAuth(user)
                 }
             }
             .store(in: &cancellables)

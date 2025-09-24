@@ -18,7 +18,6 @@ struct ContentView: View {
     @State private var documentURL: DocumentData?
     private let factory = Factory()
     
-    
     var body: some View {
         NavigationStack(path: $flow.path) {
             factory.createRootView(didLogin: {
