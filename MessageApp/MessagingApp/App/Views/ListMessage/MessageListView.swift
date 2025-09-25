@@ -166,7 +166,8 @@ struct MessageListView: View {
         switch message.type {
         case .text(let data):
             MessageView(content: data.content)
-                .frame(maxWidth: 200, alignment: message.isFromCurrentUser ? .trailing : .leading)
+                .frame(maxWidth: .infinity, alignment: message.isFromCurrentUser ? .trailing : .leading)
+                .padding(message.isFromCurrentUser ? .leading : .trailing, 16)
         case .video(let data):
             MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
                 .clipShape(.rect(cornerRadius: 10))
@@ -216,7 +217,6 @@ struct MessageListView: View {
     
     @ViewBuilder
     private func createSingleImageMessage(data: ImageMessage, message: Message) -> some View {
-        //TODO: -Handle display multiple image here. Create a new collection image view
         // This code is used to create a Hero animation for the image.
         // We have a thumbnail and a full-size image, and we want to create a Hero animation between them.
         // The process is as follows:

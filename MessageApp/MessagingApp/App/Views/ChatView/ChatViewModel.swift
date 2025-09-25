@@ -167,28 +167,7 @@ class ChatViewModel {
     private func loadImage(from imageSelection: PhotosPickerItem) async throws -> Data? {
         let data = try await imageSelection.loadTransferable(type: Data.self)
         return data
-//        guard let data = data else {
-//            //TODO: -Handle nil data
-//            debugPrint("loading image failed")
-//            return
-//        }
-//        uploadImage(imageData: data)
     }
-    
-//    private func uploadImage(imageData: Data) {
-//        let fileName = "image.jpg"
-//        uploadService.uploadImage(images: [.init(data: imageData, fieldName: "media", fileName: fileName, mimeType: "image/jpg")], fields: [.init(name: "mediaType", value: "image")])
-//            .sink { completion in
-//                switch completion {
-//                case .finished: debugPrint("uploadImage finish")
-//                case .failure(let error): debugPrint("uploadImage failure with error \(error.localizedDescription)")
-//                }
-//            } receiveValue: { [weak self] result in
-//                debugPrint("uploadImage result \(result)")
-//                self?.notifyNewMessageSent(result: result)
-//            }
-//            .store(in: &cancellables)
-//    }
     
     private func notifyNewMessageSent(result: [UploadDataResponse]) {
         let groupId = UUID()
