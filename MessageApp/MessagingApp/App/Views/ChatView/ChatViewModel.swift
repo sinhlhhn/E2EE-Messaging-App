@@ -345,9 +345,7 @@ class ChatViewModel {
         return groups.sorted { $0.createdAt > $1.createdAt }
     }
     
-    func reset() {
+    deinit {
         service.disconnect()
-        didTapBack()
-        messages = []
     }
 }

@@ -52,12 +52,6 @@ struct ChatView: View {
                 .padding()
         }
         .clipped()
-        .navigationBarBackButtonHidden()
-        .toolbar{
-            ToolbarItem(placement: .topBarLeading) {
-                backBarButton
-            }
-        }
         .onAppear {
             viewModel.subscribe()
             viewModel.loadFirstMessage()
@@ -66,17 +60,6 @@ struct ChatView: View {
             if oldValue != newValue, newValue == true {
                 debugPrint("🟣 start load more")
                 viewModel.loadMoreMessages()
-            }
-        }
-    }
-    
-    private var backBarButton: some View {
-        Button {
-            viewModel.reset()
-        } label: {
-            HStack {
-                Image(systemName: "chevron.left")
-                Text("Back")
             }
         }
     }
