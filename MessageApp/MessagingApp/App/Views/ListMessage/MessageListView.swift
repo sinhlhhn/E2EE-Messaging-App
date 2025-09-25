@@ -70,23 +70,21 @@ struct MessageListView: View {
     
     @ViewBuilder
     private func createMultipleGroupMessageView(_ group: MessageGroup) -> some View {
-        let images: [ImageMessage] = group.messages.compactMap {
-            if case let .image(image) = $0.type {
-                return ImageMessage(path: image.path, originalName: image.originalName)
-            }
-            return nil
-        }
-        if let message = group.messages.first {
-            HStack {
-                if group.isFromCurrentUser == true {
-                    Spacer()
+        MultipleGroupMessageView(
+            message: group,
+            nsAnimation: nsAnimation,
+            fullScreenGroupImage: $fullScreenGroupImage,
+            cacheImage: caches[group.id],
+            didSelectGroupImage: selectGroupImage,
+            didCreateFannedGroupMessageImageView: { data, message in
+                FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
+                    selectGroupImage(images, id: message.id.uuidString)
+                } didCompleteDisplayImage: { images in
+                    debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
+                    caches[message.groupId] = images
                 }
-                
-                createGroupImageMessage(data: images, message: message)
-                    .flippedUpsideDown()
-                    .id(messages.first?.id)
-            }
-        }
+            })
+//            .id(messages.first?.id)
     }
     
     var body: some View {
@@ -182,35 +180,9 @@ struct MessageListView: View {
         }
     }
     
-    @ViewBuilder
-    private func createGroupImageMessage(data: [ImageMessage], message: Message) -> some View {
-        if !fullScreenGroupImage.isEmpty {
-            FannedImageView(images: fullScreenGroupImage)
-                .frame(width: 150, height: 150)
-        } else if let images = caches[message.groupId] {
-            FannedImageView(images: images)
-                .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
-                .frame(width: 150, height: 150)
-                .highPriorityGesture(
-                    TapGesture().onEnded {
-                        selectGroupImage(images, message: message)
-                    }
-                )
-        } else {
-            FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
-                selectGroupImage(images, message: message)
-            } didCompleteDisplayImage: { images in
-                debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
-                caches[message.groupId] = images
-            }
-            .matchedGeometryEffect(id: message.id.uuidString, in: nsAnimation)
-            .frame(width: 150, height: 150)
-        }
-    }
-    
-    private func selectGroupImage(_ images: [UIImage], message: Message) {
+    private func selectGroupImage(_ images: [UIImage], id: String) {
         withAnimation {
-            self.selectedGroupId = message.id.uuidString
+            self.selectedGroupId = id
             self.fullScreenGroupImage = images
         }
     }

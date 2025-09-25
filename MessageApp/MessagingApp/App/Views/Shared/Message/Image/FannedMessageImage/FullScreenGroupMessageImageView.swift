@@ -24,7 +24,8 @@ struct FullScreenGroupMessageImageView: View {
     
     private var content: some View {
         ScrollView(.horizontal) {
-            LazyHStack {
+            //LazyHStack and .containerRelativeFrame() and matchedGeometryEffect() cause the view does not disappear after completing the animation
+            HStack {
                 ForEach(images, id: \.self) { image in
                     createImageViews(image: image)
                         .padding(.horizontal)
