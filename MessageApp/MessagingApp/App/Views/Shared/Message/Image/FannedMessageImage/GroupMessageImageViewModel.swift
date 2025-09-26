@@ -85,6 +85,7 @@ class GroupMessageImageViewModel {
         
         if remoteURLs.isEmpty {
             // all loaded locally
+            debugPrint("✅ load grouped image data from local")
             viewState = .completed(localImages)
             return
         }

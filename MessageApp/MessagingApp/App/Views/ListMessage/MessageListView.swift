@@ -55,38 +55,6 @@ struct MessageListView: View {
         self.didDisplayDocument = didDisplayDocument
     }
     
-    private func createSingleGroupMessageView(_ group: MessageGroup) -> some View {
-        ForEach(group.messages) { message in
-            HStack {
-                if message.isFromCurrentUser {
-                    Spacer()
-                }
-                createMessageView(message)
-                    .flippedUpsideDown()
-                    .id(message.id)
-            }
-        }
-    }
-    
-    @ViewBuilder
-    private func createMultipleGroupMessageView(_ group: MessageGroup) -> some View {
-        MultipleGroupMessageView(
-            message: group,
-            nsAnimation: nsAnimation,
-            fullScreenGroupImage: $fullScreenGroupImage,
-            cacheImage: caches[group.id],
-            didSelectGroupImage: selectGroupImage,
-            didCreateFannedGroupMessageImageView: { data, message in
-                FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
-                    selectGroupImage(images, id: message.id.uuidString)
-                } didCompleteDisplayImage: { images in
-                    debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
-                    caches[message.groupId] = images
-                }
-            })
-//            .id(messages.first?.id)
-    }
-    
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
@@ -159,25 +127,40 @@ struct MessageListView: View {
         }
     }
     
-    @ViewBuilder
-    private func createMessageView(_ message: Message) -> some View {
-        switch message.type {
-        case .text(let data):
-            MessageView(content: data.content)
-                .frame(maxWidth: .infinity, alignment: message.isFromCurrentUser ? .trailing : .leading)
-                .padding(message.isFromCurrentUser ? .leading : .trailing, 16)
-        case .video(let data):
-            MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
-                .clipShape(.rect(cornerRadius: 10))
-                .frame(width: 200, height: 300)
-        case .image(let image):
-            createSingleImageMessage(data: image, message: message)
-        case .attachment(let data):
-            MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
-                didDisplayDocument(url)
-            }
-            .frame(maxWidth: 200, alignment: message.isFromCurrentUser ? .trailing : .leading)
-        }
+    private func createSingleGroupMessageView(_ group: MessageGroup) -> some View {
+        SingleGroupMessageView(
+            group: group,
+            fullScreenImage: $fullScreenImage,
+            cacheImage: viewModel.image(forKey: group.id),
+            nsAnimation: nsAnimation,
+            didCreateMessageVideoView: { data in
+                MessageVideoView(viewModel: didCreateMessageVideoViewModel(data))
+            },
+            didCreateMessageAttachmentView: { data in
+                MessageAttachmentView(viewModel: didCreateMessageAttachmentViewModel(data)) { url in
+                    didDisplayDocument(url)
+                }
+            }, didCreateMessageImageView: createMessageImageView,
+            didSelectImageView: selectImage
+        )
+    }
+    
+    private func createMultipleGroupMessageView(_ group: MessageGroup) -> some View {
+        MultipleGroupMessageView(
+            message: group,
+            nsAnimation: nsAnimation,
+            fullScreenGroupImage: $fullScreenGroupImage,
+            cacheImage: caches[group.id],
+            didSelectGroupImage: selectGroupImage,
+            didCreateFannedGroupMessageImageView: { data, message in
+                FannedGroupMessageImageView(viewModel: didCreateGroupMessageImageViewModel(data)) { images in
+                    selectGroupImage(images, id: message.id.uuidString)
+                } didCompleteDisplayImage: { images in
+                    debugPrint("[Cached] Group Image Message \(message.id.uuidString)")
+                    caches[message.groupId] = images
+                }
+            })
+//            .id(messages.first?.id)
     }
     
     private func selectGroupImage(_ images: [UIImage], id: String) {
@@ -188,44 +171,11 @@ struct MessageListView: View {
     }
     
     @ViewBuilder
-    private func createSingleImageMessage(data: ImageMessage, message: Message) -> some View {
-        // This code is used to create a Hero animation for the image.
-        // We have a thumbnail and a full-size image, and we want to create a Hero animation between them.
-        // The process is as follows:
-        //  - The app loads the image from disk.
-        //  - When the user taps the thumbnail image, the image flies from the thumbnail to the full-size version.
-        //  - When the user dismisses the full-size image, it flies back to the thumbnail.
-        //
-        // Issue:
-        //  - The problem is that `matchedGeometryEffect` only allows one view with the same ID and `isSource = true` at a time.
-        //    → To work around this, we create a placeholder and remove the thumbnail when transitioning to the full-size image.
-        //  - Since the thumbnail is removed, we have to reload the image from disk. This introduces a delay,
-        //    and we show a loading state to the user. However, this loading state prevents SwiftUI from recognizing
-        //    the transition properly, resulting in a choppy animation.
-        //    → To fix this, we implement a caching mechanism to avoid loading from disk, allowing SwiftUI to perform
-        //    a smooth transition.
-        if let fullScreenImage = fullScreenImage {
-            Image(uiImage: fullScreenImage)
-                .resizable()
-                .clipShape(.rect(cornerRadius: 10))
-                .frame(width: 200, height: 200)
-        } else if let image = viewModel.image(forKey: message.id.uuidString) {
-            CachedMessageImageView(image: image, geoEffectId: message.id.uuidString, nsAnimation: nsAnimation) { image in
-                selectImage(message.id, image: image)
-            }
-            .frame(width: 200, height: 200)
-        } else {
-            createMessageImageView(data: data, id: message.id)
-                .frame(width: 200, height: 200)
-        }
-    }
-    
-    @ViewBuilder
-    private func createMessageImageView(data: ImageMessage, id: UUID) -> some View {
-        MessageImageView(geoEffectId: id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
-            selectImage(id, image: image)
+    private func createMessageImageView(data: ImageMessage, message: Message) -> MessageImageView {
+        MessageImageView(geoEffectId: message.id.uuidString, nsAnimation: nsAnimation, viewModel: didCreateMessageImageViewModel(data)) { image in
+            selectImage(message.id, image: image)
         } didCompleteDisplayImage: { image in
-            viewModel.insertImage(image, forKey: id.uuidString)
+            viewModel.insertImage(image, forKey: message.groupId ?? message.id)
         }
     }
     
