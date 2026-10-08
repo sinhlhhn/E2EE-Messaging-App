@@ -7,6 +7,8 @@
 
 import Foundation
 
+// This domain model can be call from any isolation
+nonisolated
 protocol SingleMediaMessage: Hashable {
     var path: URL { get }
 }

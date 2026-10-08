@@ -6,11 +6,22 @@
 //
 
 import Foundation
-import Combine
+@preconcurrency import Combine
+
+/// `InputStream`/`OutputStream` aren't marked `Sendable` by Foundation, even
+/// though bound streams (`Stream.getBoundStreams`) are explicitly designed for
+/// cross-thread use: one end is written on one thread/run loop while the other
+/// is read on a different one (e.g. URLSession reading `InputStream` on its own
+/// internal queue). The OS-level implementation already synchronizes this, so
+/// this retroactive `@unchecked Sendable` reflects an existing safety
+/// guarantee rather than silencing a genuine, unmitigated race.
+extension InputStream: @unchecked @retroactive Sendable {}
+extension OutputStream: @unchecked @retroactive Sendable {}
 
 /// Responsibilities:
 ///     - Handle streaming upload data when triggering `uploadTask(withStreamedRequest:)`.
 ///     - Observe the data upload progress.
+@MainActor
 final class StreamUploadSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
     private let pinning: PinningDelegate
     
@@ -19,11 +30,11 @@ final class StreamUploadSessionDelegate: NSObject, URLSessionDelegate, URLSessio
         let output: OutputStream
     }
     
-    private var streamingTimer: Timer?
+    private var writingTask: Task<Void, Never>?
     private var canWrite = true
     private var boundStreams: [Int: Streams] = [:]
     
-    private var progress = PassthroughSubject<Double, Error>()
+    nonisolated private let progress = PassthroughSubject<Double, Error>()
     var progressPublisher: AnyPublisher<Double, Error> {
         progress.eraseToAnyPublisher()
     }
@@ -32,12 +43,11 @@ final class StreamUploadSessionDelegate: NSObject, URLSessionDelegate, URLSessio
         self.pinning = pinning
     }
     
-    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
-                    completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-        pinning.handleChallenge(session, didReceive: challenge, completionHandler: completionHandler)
+    func urlSession(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        await pinning.handleChallenge(didReceive: challenge)
     }
     
-    func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didSendBodyData bytesSent: Int64, totalBytesSent: Int64, totalBytesExpectedToSend: Int64) {
         let value = Double(totalBytesSent) / Double(totalBytesExpectedToSend)
         progress.send(value)
         if value == 1 {
@@ -47,7 +57,7 @@ final class StreamUploadSessionDelegate: NSObject, URLSessionDelegate, URLSessio
 }
 
 extension StreamUploadSessionDelegate: StreamDelegate {
-    func createStream(for id: Int) {
+    nonisolated func createStream(for id: Int) {
         
     }
     
@@ -68,65 +78,105 @@ extension StreamUploadSessionDelegate: StreamDelegate {
         return Streams(input: input, output: output)
     }
     
-    func urlSession(_ session: URLSession, task: URLSessionTask,
-                    needNewBodyStream completionHandler: @escaping (InputStream?) -> Void) {
-        print("Delegate: needNewBodyStream")
-        let boundStream = createStream()
-        print("Create streams with \(task.taskIdentifier)")
-        completionHandler(boundStream.input)
-        startSendingData(boundStream)
-        print("Delegate: start sending data")
+//    nonisolated func urlSession(_ session: URLSession, needNewBodyStreamForTask task: URLSessionTask) async -> InputStream? {
+//        await createStreamAndStartSending(taskIdentifier: task.taskIdentifier)
+//    }
+//
+//    @MainActor
+//    private func createStreamAndStartSending(taskIdentifier: Int) -> InputStream? {
+//        print("Delegate: needNewBodyStream")
+//        let boundStream = createStream()
+//        print("Create streams with \(taskIdentifier)")
+//        startSendingData(boundStream)
+//        print("Delegate: start sending data")
+//        return boundStream.input
+//    }
+    
+    // `needNewBodyStream` is called by URLSession on its own background delegate
+    // queue. We hop onto `@MainActor` to create the stream (via `await`), then
+    // call `completionHandler` from this `nonisolated` (non-actor-isolated)
+    // `Task` body — not from inside a `@MainActor`-labeled closure — so the
+    // compiler can prove `completionHandler` isn't captured across isolation
+    // domains. Marking the parameter `sending` tells the compiler that
+    // ownership of `completionHandler` fully transfers into the `Task`
+    // closure, so it's no longer considered "accessible" from the enclosing
+    // (nonisolated) function scope after the `Task` is spawned.
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
+                    needNewBodyStream completionHandler: sending @escaping (InputStream?) -> Void) {
+        Task {
+            print("Delegate: needNewBodyStream")
+            let boundStream = await createStream()
+            print("Create streams with \(task.taskIdentifier)")
+            completionHandler(boundStream.input)
+            await startSendingData(boundStream)
+            print("Delegate: start sending data")
+        }
     }
     
+    /// Replaces the old `Timer.scheduledTimer(withTimeInterval:repeats:block:)`
+    /// polling loop. That API's `block` parameter is declared `NS_SWIFT_SENDABLE`
+    /// in Foundation, so it's imported into Swift as `@Sendable` — capturing the
+    /// non-`Sendable` `boundStream` in it is illegal under strict concurrency. A
+    /// cancellable `@MainActor`-confined `Task` loop needs no `@Sendable` closure
+    /// at all, since the loop body runs on the same actor as `self`.
     private func startSendingData(_ boundStream: Streams) {
-        DispatchQueue.main.async {
-            self.streamingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
-                [weak self] timer in
-                guard let self = self else { return }
+        writingTask?.cancel()
+        writingTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { break }
                 
-                if self.canWrite {
+                if canWrite {
                     let message = "*** \(Date())\r\n"
-                    guard let messageData = message.data(using: .utf8) else { return }
+                    guard let messageData = message.data(using: .utf8) else { continue }
                     let messageCount = messageData.count
-                    let bytesWritten: Int = messageData.withUnsafeBytes() { (buffer: UnsafePointer<UInt8>) in
-                        self.canWrite = false
+                    let bytesWritten: Int = messageData.withUnsafeBytes({ buffer in
+                        canWrite = false
                         print("streaming: \(message)")
-                        return boundStream.output.write(buffer, maxLength: messageCount)
-                    }
+                        if let pointer = buffer.baseAddress {
+                            return boundStream.output.write(pointer, maxLength: messageCount)
+                        } else {
+                            debugPrint("Error: could not get buffer pointer")
+                            return -1
+                        }
+                    })
                     if bytesWritten < messageCount {
                         // Handle writing less data than expected.
                         print("Delegate: Write less data than expected. \(bytesWritten) - \(messageCount)")
                     }
                 }
             }
-            
-            self.streamingTimer?.fire()
         }
     }
     
-    func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
-        if eventCode.contains(.hasSpaceAvailable) {
-            print("Delegate: Has space available")
-            canWrite = true
-        }
-        if eventCode.contains(.errorOccurred) {
-            // Close the streams and alert the user that the upload failed.
-            print("Delegate: Error occurred")
-            closeStream(aStream)
-        }
-        
-        if eventCode.contains(.endEncountered) {
-            // Close the streams and alert the user that the upload failed.
-            print("Delegate: Encountered")
-            closeStream(aStream)
-        }
-        
-        print("Delegate: Stream event: \(eventCode)")
-    }
+    // `stream(_:handle:)` already fires on the main run loop (the output stream
+    // was scheduled with `.main` above), but the protocol requirement itself is
+    // `nonisolated`, so we still hop explicitly to satisfy the compiler.
+//    nonisolated func stream(_ aStream: Stream, handle eventCode: Stream.Event) {
+//        Task { @MainActor in
+//            if eventCode.contains(.hasSpaceAvailable) {
+//                print("Delegate: Has space available")
+//                canWrite = true
+//            }
+//            if eventCode.contains(.errorOccurred) {
+//                // Close the streams and alert the user that the upload failed.
+//                print("Delegate: Error occurred")
+//                closeStream(aStream)
+//            }
+//            
+//            if eventCode.contains(.endEncountered) {
+//                // Close the streams and alert the user that the upload failed.
+//                print("Delegate: Encountered")
+//                closeStream(aStream)
+//            }
+//            
+//            print("Delegate: Stream event: \(eventCode)")
+//        }
+//    }
     
     private func closeStream(_ stream: Stream) {
         stream.close()
-        streamingTimer?.invalidate()
-        streamingTimer = nil
+        writingTask?.cancel()
+        writingTask = nil
     }
 }

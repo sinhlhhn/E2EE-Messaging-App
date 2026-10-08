@@ -79,7 +79,7 @@ class ConversationViewModel {
                 switch completion {
                 case .failure(let error):
                     //TODO: -show error state
-                    debugPrint("❌ fetchUsers failed")
+                    debugPrint("❌ fetchUsers failed: \(error.localizedDescription)")
                 case .finished: break
                 }
             } receiveValue: { [weak self] users in
@@ -100,7 +100,7 @@ class ConversationViewModel {
                 switch completion {
                 case .failure(let error):
                     //TODO: -show error state
-                    debugPrint("❌ logout failed")
+                    debugPrint("❌ logout failed: \(error.localizedDescription)")
                 case .finished: break
                 }
             } receiveValue: { [weak self] _ in

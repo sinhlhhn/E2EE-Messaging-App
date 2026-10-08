@@ -6,10 +6,13 @@
 //
 
 import Foundation
-import Combine
+@preconcurrency import Combine
 
 
-final class ProgressSessionDelegate : NSObject, URLSessionDelegate, URLSessionTaskDelegate, ProgressSubscriber, URLSessionDownloadDelegate {
+// This class is marked as unchecked Sendable. So we are responsible to prevent the data race by ourselves.
+// Currently, there are only one mutable property `progressDictionary` that is prevented by the `progressQueue`
+nonisolated
+final class ProgressSessionDelegate : NSObject, URLSessionDelegate, URLSessionTaskDelegate, ProgressSubscriber, URLSessionDownloadDelegate, @unchecked Sendable {
     private let pinning: PinningDelegate
     
     private let progressQueue = DispatchQueue(label: "com.example.URLSession.progressQueue")

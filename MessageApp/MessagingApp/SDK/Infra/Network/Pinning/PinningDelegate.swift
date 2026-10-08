@@ -7,7 +7,10 @@
 
 import Foundation
 
-protocol PinningDelegate {
+nonisolated
+protocol PinningDelegate: Sendable {
     func handleChallenge(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge,
                          completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+    
+    func handleChallenge(didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?)
 }

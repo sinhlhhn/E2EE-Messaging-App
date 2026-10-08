@@ -7,6 +7,7 @@
 
 
 import SwiftUI
+@preconcurrency import UIKit
 import Combine
 
 @Observable

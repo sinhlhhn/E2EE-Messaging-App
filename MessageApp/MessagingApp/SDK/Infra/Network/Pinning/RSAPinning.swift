@@ -9,6 +9,7 @@ import Foundation
 import CryptoKit
 import CommonCrypto
 
+nonisolated
 final class RSAPinning: PinningDelegate {
     private let pinnedKeyHashBase64 = "WHa2dTgIa0REVgQ+xPY6BMoZvJLHWWjVuzT9x9JEkQM="
     
@@ -25,6 +26,42 @@ final class RSAPinning: PinningDelegate {
             _ = CC_SHA256($0.baseAddress, CC_LONG(keyWithHeader.count), &hash)
         }
         return Data(hash).base64EncodedString()
+    }
+    
+    func handleChallenge(didReceive challenge: URLAuthenticationChallenge) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
+              let serverTrust = challenge.protectionSpace.serverTrust,
+              let serverCerts =  SecTrustCopyCertificateChain(serverTrust) as? [SecCertificate],
+              let leafServerCerts = serverCerts.first else {
+            debugPrint("cancelAuthenticationChallenge ❌")
+            return (.cancelAuthenticationChallenge, nil)
+        }
+
+        // Extract public key from certificate
+        guard let serverPublicKey = SecCertificateCopyKey(leafServerCerts),
+              let serverPublicKeyData = SecKeyCopyExternalRepresentation(serverPublicKey, nil) as Data? else {
+            debugPrint("cancelAuthenticationChallenge ❌")
+            return (.cancelAuthenticationChallenge, nil)
+        }
+        
+        
+        if let keyAttributes = SecKeyCopyAttributes(serverPublicKey) as? [String: Any] {
+            print("Key type:", keyAttributes[kSecAttrKeyType as String] ?? "Unknown")
+            print("Key size:", keyAttributes[kSecAttrKeySizeInBits as String] ?? "Unknown")
+        }
+        
+        let keyHashBase64 = sha256(data:serverPublicKeyData)
+        print("Public Key Hash (Base64):", keyHashBase64)
+
+        // Compare against your pinned hash
+        if keyHashBase64 == pinnedKeyHashBase64 {
+            let credential = URLCredential(trust: serverTrust)
+            debugPrint("useCredential ✅")
+            return (.useCredential, credential)
+        } else {
+            debugPrint("cancelAuthenticationChallenge ❌")
+            return (.cancelAuthenticationChallenge, nil)
+        }
     }
     
     func handleChallenge(_ session: URLSession, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {

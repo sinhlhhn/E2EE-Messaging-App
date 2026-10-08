@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+@preconcurrency import UIKit
 
 @Observable
 class MessageImageViewModel {

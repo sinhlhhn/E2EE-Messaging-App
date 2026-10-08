@@ -324,7 +324,7 @@ class ChatViewModel {
         return groups.sorted { $0.createdAt > $1.createdAt }
     }
     
-    deinit {
+    isolated deinit {
         service.disconnect()
     }
 }

@@ -6,13 +6,15 @@
 //
 
 import Foundation
-import Combine
+@preconcurrency import Combine
 
 
+// The infra can be called from any isolation
+nonisolated
 final class DefaultSessionDelegate : NSObject, URLSessionDelegate {
     private let pinning: PinningDelegate
     
-    private var progress = PassthroughSubject<Double, Error>()
+    private let progress = PassthroughSubject<Double, Error>()
     var progressPublisher: AnyPublisher<Double, Error> {
         progress.eraseToAnyPublisher()
     }
