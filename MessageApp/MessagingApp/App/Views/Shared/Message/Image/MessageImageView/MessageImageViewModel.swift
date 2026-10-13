@@ -9,6 +9,8 @@ import SwiftUI
 import Combine
 @preconcurrency import UIKit
 
+import MessageSDK
+
 @Observable
 class MessageImageViewModel {
     enum ViewState {
@@ -100,6 +102,7 @@ class MessageImageViewModel {
     
     private func fetchImageFromCloud(source: String) {
         downloadNetwork.downloadData(url: source)
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("fetchImageFromCloud finish")

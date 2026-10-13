@@ -53,6 +53,9 @@ struct ConversationView: View {
 
 
 import Combine
+
+import MessageSDK
+
 @Observable
 class ConversationViewModel {
     var users: [User] = []

@@ -9,6 +9,7 @@
 import SwiftUI
 import Combine
 
+import MessageSDK
 @Observable
 class MessageAttachmentViewModel {
     enum ViewState {
@@ -91,6 +92,7 @@ class MessageAttachmentViewModel {
     
     private func fetchImageFromCloud(source: String) {
         downloadNetwork.downloadData(url: source)
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("fetchImageFromCloud finish")

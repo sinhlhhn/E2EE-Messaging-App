@@ -32,6 +32,8 @@ struct LogInView: View {
 
 import Combine
 
+import MessageSDK
+
 @Observable
 class LoginViewModel {
     let service: any AuthenticationUseCase<PasswordAuthentication>
@@ -46,6 +48,7 @@ class LoginViewModel {
     
     func logIn(email: String, password: String) {
         service.login(data: .init(email: email, password: password))
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 debugPrint("logIn completed \(completion)")
             } receiveValue: { [weak self] user in
@@ -57,6 +60,7 @@ class LoginViewModel {
     
     func register(email: String, password: String) {
         service.register(data: .init(email: email, password: password))
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 debugPrint("register completed \(completion)")
             } receiveValue: { [weak self] user in

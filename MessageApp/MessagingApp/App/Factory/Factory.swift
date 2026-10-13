@@ -5,7 +5,8 @@
 
 import SwiftUI
 
-typealias DataTaskHTTPClient = any HTTPClient<URLRequest, (Data, HTTPURLResponse)>
+import MessageSDK
+
 
 final class Factory {
     private lazy var pinning: PinningDelegate = ECCPinning()

@@ -1,0 +1,15 @@
+//
+//  AuthenticationService.swift
+//  MessagingApp
+//
+//  Created by SinhLH.AVI on 22/5/25.
+//
+
+import Foundation
+
+import Combine
+public protocol AuthenticationUseCase<Authentication> {
+    associatedtype Authentication
+    func login(data: Authentication) -> AnyPublisher<User, Error>
+    func register(data: Authentication) -> AnyPublisher<User, Error>
+}

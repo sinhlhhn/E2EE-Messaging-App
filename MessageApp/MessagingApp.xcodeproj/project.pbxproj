@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C9C8501F2DDEEA1200C6597D /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = C9C8501E2DDEEA1200C6597D /* SocketIO */; };
+		C9E628CA307CBFFD00BBFA88 /* MessageSDK in Frameworks */ = {isa = PBXBuildFile; productRef = C9E628C9307CBFFD00BBFA88 /* MessageSDK */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,7 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C9C8501F2DDEEA1200C6597D /* SocketIO in Frameworks */,
+				C9E628CA307CBFFD00BBFA88 /* MessageSDK in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,7 +83,7 @@
 			);
 			name = MessagingApp;
 			packageProductDependencies = (
-				C9C8501E2DDEEA1200C6597D /* SocketIO */,
+				C9E628C9307CBFFD00BBFA88 /* MessageSDK */,
 			);
 			productName = MessagingApp;
 			productReference = 223DE0E92DDCC599005059B3 /* MessagingApp.app */;
@@ -114,7 +114,7 @@
 			mainGroup = 223DE0E02DDCC599005059B3;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				C9C8501D2DDEEA1200C6597D /* XCRemoteSwiftPackageReference "socket" */,
+				C9E628C8307CBFFD00BBFA88 /* XCLocalSwiftPackageReference "MessageSDK" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 223DE0EA2DDCC599005059B3 /* Products */;
@@ -353,22 +353,17 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		C9C8501D2DDEEA1200C6597D /* XCRemoteSwiftPackageReference "socket" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
-			requirement = {
-				branch = master;
-				kind = branch;
-			};
+/* Begin XCLocalSwiftPackageReference section */
+		C9E628C8307CBFFD00BBFA88 /* XCLocalSwiftPackageReference "MessageSDK" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = MessageSDK;
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		C9C8501E2DDEEA1200C6597D /* SocketIO */ = {
+		C9E628C9307CBFFD00BBFA88 /* MessageSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C9C8501D2DDEEA1200C6597D /* XCRemoteSwiftPackageReference "socket" */;
-			productName = SocketIO;
+			productName = MessageSDK;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

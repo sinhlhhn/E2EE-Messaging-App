@@ -81,6 +81,7 @@ class ProfileViewModel {
         }
         
         service.uploadImage(image: ImageData(image: imageData, userName: "", fileName: "tiger.jpg", fieldName: "media"))
+            .receive(on: DispatchQueue.main)
             .sink { _ in
                 
             } receiveValue: { _ in
@@ -110,6 +111,7 @@ protocol ProfileUseCase {
 }
 
 import Combine
+import MessageSDK
 class ProfileService: ProfileUseCase {
     private let network: NetworkModule
     
@@ -137,6 +139,7 @@ class ProfileService: ProfileUseCase {
     
     func uploadStreamRawData() {
         network.uploadStreamRawData()
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 
             } receiveValue: { _ in
@@ -147,6 +150,7 @@ class ProfileService: ProfileUseCase {
     
     func downloadImage() {
         network.downloadData(url: "download/1752128810223-708544664.jpg")
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: print("downloadImage finish")
@@ -162,6 +166,7 @@ class ProfileService: ProfileUseCase {
     
     func downloadData() {
         network.downloadData(url: "download/backup.data")
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: print("downloadData finish")

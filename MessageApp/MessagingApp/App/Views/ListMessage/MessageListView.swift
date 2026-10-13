@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+import MessageSDK
+
 struct MessageListView: View {
     @Binding var reachedTop: Bool
     @Binding var previousId: Int?

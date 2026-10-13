@@ -8,6 +8,8 @@
 import Combine
 import Foundation
 
+import MessageSDK
+
 //let mockMessages: [Message] = [
 //    Message(messageId: 1, type: .text(.init(content: "Hey, how are you?")), isFromCurrentUser: true, groupId: nil),
 //    Message(messageId: 2, type: .text(.init(content: "I'm good, thanks! How about you?")), isFromCurrentUser: false, groupId: nil),

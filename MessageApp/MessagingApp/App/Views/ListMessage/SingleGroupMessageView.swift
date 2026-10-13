@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+import MessageSDK
+
 struct SingleGroupMessageView: View {
     
     let group: MessageGroup
