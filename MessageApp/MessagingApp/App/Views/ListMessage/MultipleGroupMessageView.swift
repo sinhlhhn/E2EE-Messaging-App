@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+import MessageSDK
+
 struct MultipleGroupMessageView: View {
     let message: MessageGroup
     let nsAnimation: Namespace.ID

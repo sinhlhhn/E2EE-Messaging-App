@@ -8,6 +8,8 @@
 import SwiftUI
 import Combine
 
+import MessageSDK
+
 @Observable
 class MessageVideoViewModel {
     enum ViewState {
@@ -81,6 +83,7 @@ class MessageVideoViewModel {
     
     private func fetchDataFromCloud(source: String) {
         downloadNetwork.downloadData(url: source)
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("fetchDataFromCloud finish")

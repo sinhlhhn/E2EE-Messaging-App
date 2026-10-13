@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-
+import MessageSDK
 
 enum ConversationDestination: Hashable {
     case logIn

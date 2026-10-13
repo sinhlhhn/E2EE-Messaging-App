@@ -12,6 +12,8 @@ import Combine
 import SwiftUI
 import PhotosUI
 
+import MessageSDK
+
 struct MessageGroup: Identifiable, Equatable {
     let id: UUID        // = groupId if present, else message.id
     let isFromCurrentUser: Bool
@@ -77,6 +79,7 @@ class ChatViewModel {
     
     func subscribe() {
         cancellable = service.subscribeToIncomingMessages()
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("socket finished")
@@ -111,6 +114,7 @@ class ChatViewModel {
     
     private func connect() {
         connectCancellable = service.connect(user: sender.username)
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                     case .finished: debugPrint("socket finished")
@@ -147,6 +151,7 @@ class ChatViewModel {
         let multipartImages = listData.map { MultipartImage(data: $0, fieldName: "media", fileName: fileName, mimeType: "image/jpg") }
         
         uploadService.uploadImage(images: multipartImages, fields: [.init(name: "mediaType", value: "image")])
+            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                 case .finished: debugPrint("uploadImage finish")
@@ -210,6 +215,7 @@ class ChatViewModel {
             break
         case .video(let videoData):
             uploadService.uploadFile(data: UploadFileData(url: videoData.path, fileSize: videoData.fileSize, userId: String(sender.id)))
+                .receive(on: DispatchQueue.main)
                 .sink { completion in
                     switch completion {
                     case .finished: print("uploadFile finished")
@@ -232,6 +238,7 @@ class ChatViewModel {
             
         case .attachment(let attachment):
             uploadService.uploadFile(data: UploadFileData(url: attachment.path, fileSize: attachment.fileSize, userId: String(sender.id)))
+                .receive(on: DispatchQueue.main)
                 .sink { completion in
                     switch completion {
                     case .finished: print("uploadFile finished")
@@ -277,10 +284,10 @@ class ChatViewModel {
                     .replaceError(with: [])
                     .eraseToAnyPublisher()
             }
+            .receive(on: DispatchQueue.main)
             .compactMap { [weak self] messages -> [MessageGroup]? in
                 self?.groupMessages(messages)
             }
-            .receive(on: DispatchQueue.main)
             .sink { completion in
                 switch completion {
                     case .finished: debugPrint("fetch finish")
@@ -324,7 +331,7 @@ class ChatViewModel {
         return groups.sorted { $0.createdAt > $1.createdAt }
     }
     
-    deinit {
+    isolated deinit {
         service.disconnect()
     }
 }

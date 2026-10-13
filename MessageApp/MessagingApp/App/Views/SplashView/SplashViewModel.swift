@@ -8,6 +8,8 @@
 import SwiftUI
 import Combine
 
+import MessageSDK
+
 @Observable
 final class SplashViewModel {
     @ObservationIgnored
@@ -34,6 +36,7 @@ final class SplashViewModel {
     
     private func subscribeToAuthenticationState() {
         tokenProvider.subscribeToAuthenticationState()
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] authenticationState in
                 switch authenticationState {
                 case .loggedOut:

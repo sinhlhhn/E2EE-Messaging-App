@@ -7,7 +7,10 @@
 
 
 import SwiftUI
+@preconcurrency import UIKit
 import Combine
+
+import MessageSDK
 
 @Observable
 class GroupMessageImageViewModel {
@@ -123,6 +126,7 @@ class GroupMessageImageViewModel {
     private func fetchImagesFromCloud(_ remoteURLs: [URL], existing: [UIImage]) {
         let publishers = remoteURLs.map { url in
             downloadNetwork.downloadData(url: url.path)
+                .receive(on: DispatchQueue.main)
                 .tryCompactMap { [weak self] result -> UIImage? in
                     guard let self else { return nil }
                     switch result {
